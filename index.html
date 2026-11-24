@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>THE CARKOS CODEX // v9.0 Modular Build</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+
+  <div class="toolbar">
+    <div class="brand-mark">THE CARKOS CODEX <span>// v9.0</span></div>
+    <div class="time-pill hidden" id="hud-time">DAY 1 • DUSK</div>
+    <div class="toolbar-actions">
+      <button class="tool-btn hidden" id="btn-nav-map">World Map</button>
+      <button class="tool-btn hidden" id="btn-nav-camp">Make Camp</button>
+      <button class="tool-btn" id="btn-gallery">Codex Archive</button>
+      <button class="tool-btn" id="btn-audio">Audio: OFF</button>
+      <button class="tool-btn active" id="btn-edges">Sobel Edges: ON</button>
+      <button class="tool-btn" id="btn-merch">Etch PNG</button>
+      <button class="tool-btn" id="btn-aspect">9:16 Reels</button>
+      <button class="tool-btn" id="btn-record">Record 8s</button>
+    </div>
+  </div>
+
+  <div class="main-frame" id="main-frame">
+    <div class="viewport-wrap" id="viewport-wrap">
+      <canvas id="main-canvas"></canvas>
+      <div class="crt-overlay"></div>
+    </div>
+
+    <!-- SCREEN 0: COVER / TITLE -->
+    <div class="side-panel" id="panel-title">
+      <div>
+        <div class="section-tag">3D Raymarched Dark Fantasy Grimoire</div>
+        <h1 class="panel-title">THE CARKOS CODEX</h1>
+        <p class="lore-text">
+          <em>"Count thy torches. Uncover what the walls conceal. Only the stairwell leads back to the sky."</em>
+        </p>
+        <p class="lore-text">
+          Stand small against colossal horrors emerging from the dark, delve into multi-level 3D catacombs, manage your satchel of rations and relics, and rest beside your <strong>3D Campfire</strong>.
+        </p>
+      </div>
+      <div class="choices">
+        <button class="primary-btn" id="btn-start-forge">Open the Tome →</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 1: EXPRESSIVE FLESH-FORGE -->
+    <div class="side-panel hidden" id="panel-forge">
+      <div>
+        <div class="section-tag">Rite I // Forge Your Temporary Flesh</div>
+        <h1 class="panel-title" id="forge-class-title">Marrow-Penitent</h1>
+        <p class="lore-text" id="forge-class-lore">
+          Bound in a horned iron cage-helm to silence worldly doubts. Sworn to ascend Osscrown.
+        </p>
+
+        <div class="stat-row">
+          <div>STR<strong id="f-str">7</strong></div>
+          <div>INT<strong id="f-int">3</strong></div>
+          <div>FTH<strong id="f-fth">8</strong></div>
+          <div>WIL<strong id="f-wil">6</strong></div>
+        </div>
+
+        <div class="section-tag">1. Vessel Archetype (Sets 3D Silhouette)</div>
+        <div class="chip-grid" id="class-grid">
+          <button class="chip-btn selected" data-class="penitent">Marrow-Penitent</button>
+          <button class="chip-btn" data-class="fendiver">Fen-Diver</button>
+          <button class="chip-btn" data-class="flagellant">Cinder-Flagellant</button>
+          <button class="chip-btn" data-class="scavenger">Miregate Scavenger</button>
+          <button class="chip-btn" data-class="cantor">Veil-Cantor</button>
+          <button class="chip-btn" data-class="rootwalker">Grafted Root-Walker</button>
+        </div>
+
+        <div class="section-tag">2. Starting Omen &amp; Pantheon Brand</div>
+        <div class="chip-grid" id="omen-grid">
+          <button class="chip-btn selected" data-omen="oathbreaker">Omen: Oath-Breaker</button>
+          <button class="chip-btn" data-omen="graverobber">Omen: Grave-Robber</button>
+          <button class="chip-btn" data-omen="sleepwalker">Omen: Sleep-Walker</button>
+          <button class="chip-btn" data-omen="heretic">Omen: Heresy-Marked</button>
+        </div>
+
+        <div class="god-grid" id="god-grid">
+          <button class="chip-btn" data-god="vaelmora">VAEL-MORA</button>
+          <button class="chip-btn" data-god="aurelion">AURELION</button>
+          <button class="chip-btn" data-god="vespera">VESPERA</button>
+          <button class="chip-btn" data-god="arborkahn">ARBOR-KAHN</button>
+          <button class="chip-btn" data-god="ignissol">IGNIS-SOL</button>
+          <button class="chip-btn selected" data-god="veneratus">VENERATUS</button>
+        </div>
+      </div>
+
+      <div class="choices">
+        <button class="choice-btn" id="btn-reroll-face"><span>[R]</span> Roll New Visage, Scars &amp; Hair</button>
+        <button class="primary-btn" id="btn-begin">Enter The Waking Rind →</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 2: PLAYABLE 3D RPG -->
+    <div class="side-panel hidden" id="panel-game">
+      <div>
+        <div class="player-hud">
+          <canvas id="mini-portrait"></canvas>
+          <div class="hud-info">
+            <div><strong id="hud-class">Marrow-Penitent</strong> • <strong>LVL <span id="hud-lvl">1</span></strong> (<span id="hud-xp">0/100</span> XP)</div>
+            <div>PATRON: <strong id="hud-god">VENERATUS</strong> (Brand <span id="hud-brand">1</span>/10)</div>
+            <div class="hp-bar"><div class="hp-fill" id="hp-fill"></div></div>
+            <div class="hud-curses" id="hud-curses">HP: 14/14 • FLESH: Uncorrupted</div>
+          </div>
+        </div>
+
+        <div class="res-strip">
+          <span>SILVER: <strong id="res-sp">15 SP</strong></span>
+          <span>TORCHES: <strong id="res-torch">3 (8t)</strong></span>
+          <span>RATIONS: <strong id="res-rat">2</strong></span>
+          <span>BLADE: <strong id="res-wpn">+0</strong></span>
+        </div>
+
+        <div class="stat-row">
+          <div>STR<strong id="g-str">7</strong></div>
+          <div>INT<strong id="g-int">3</strong></div>
+          <div>FTH<strong id="g-fth">8</strong></div>
+          <div>WIL<strong id="g-wil">6</strong></div>
+        </div>
+
+        <div class="enemy-hud hidden" id="enemy-hud">
+          <div class="enemy-top">
+            <span class="enemy-name" id="enemy-name">ENEMY</span>
+            <span class="enemy-state" id="enemy-state">HOSTILE</span>
+          </div>
+          <div class="enemy-hp-bar"><div class="enemy-hp-fill" id="enemy-hp-fill"></div></div>
+          <div class="enemy-telegraph" id="enemy-telegraph">Telegraph...</div>
+        </div>
+
+        <div class="inv-strip">
+          <div class="inv-header">
+            <span id="quest-tag" style="color:var(--accent);">QUEST: None</span>
+            <button class="inv-inspect-btn" id="btn-open-pack">Inspect Pack</button>
+          </div>
+          <div class="inv-items" id="inv-items"></div>
+        </div>
+
+        <div class="section-tag" id="game-tag">The Waking Rind</div>
+        <h1 class="panel-title" id="game-title">Cartographic Chart</h1>
+        <p class="lore-text" id="game-lore"></p>
+      </div>
+
+      <div class="choices" id="game-choices"></div>
+    </div>
+
+    <!-- SCREEN 3: CODEX ARCHIVE -->
+    <div class="side-panel hidden" id="panel-gallery">
+      <div>
+        <div class="section-tag">Codex Archive // Woodcut Plate Viewer</div>
+        <h1 class="panel-title" id="gal-title">The Weeping Sentinel</h1>
+        <p class="lore-text" id="gal-lore"></p>
+
+        <div class="section-tag">Characters &amp; Wandering Souls</div>
+        <div class="chip-grid">
+          <button class="chip-btn selected" data-art="sentinel">Weeping Sentinel</button>
+          <button class="chip-btn" data-art="priest">Marrow-Priest</button>
+          <button class="chip-btn" data-art="frogknight">Exiled Frog-Knight</button>
+          <button class="chip-btn" data-art="nighthag">Pale Night-Hag</button>
+          <button class="chip-btn" data-art="fenwarden">Fen-Warden</button>
+          <button class="chip-btn" data-art="peddler">Masked Peddler</button>
+        </div>
+
+        <div class="section-tag">Colossal Horrors &amp; Abominations</div>
+        <div class="chip-grid">
+          <button class="chip-btn" data-art="exile">Bone-Sworn Colossus</button>
+          <button class="chip-btn" data-art="mirevisage">The Mire-Leviathan</button>
+          <button class="chip-btn" data-art="marionette">The Pit-Beast</button>
+          <button class="chip-btn" data-art="hermit">Reed-Pipe Hermit</button>
+        </div>
+
+        <div class="section-tag">Relics &amp; Supplies</div>
+        <div class="chip-grid">
+          <button class="chip-btn" data-art="censer">Censer of Ways</button>
+          <button class="chip-btn" data-art="shard">Crown-Shard</button>
+          <button class="chip-btn" data-art="moss">Night-Watch Moss</button>
+          <button class="chip-btn" data-art="reedbone">Hollow Reed-Bone</button>
+          <button class="chip-btn" data-art="ration">Tallow Ration</button>
+          <button class="chip-btn" data-art="torch">Pitch Torch</button>
+        </div>
+      </div>
+
+      <div class="choices">
+        <button class="primary-btn" id="btn-exit-gallery">← Return to Grimoire</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
