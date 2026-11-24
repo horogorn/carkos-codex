@@ -40,7 +40,8 @@ import {
   drawDetailedArtwork,
   drawWorldMap,
   drawExpressivePortrait,
-  drawCoverArt
+  drawCoverArt,
+  drawFullBodyVessel
 } from "./art2d.js";
 
 import {
@@ -316,11 +317,13 @@ function loop() {
   if (state.screen === "title") {
     render2DToAscii(drawCoverArt);
   } else if (state.screen === "forge") {
-    render2DToAscii(drawExpressivePortrait);
+    render2DToAscii(drawFullBodyVessel);
   } else if (state.screen === "gallery") {
     render2DToAscii((ctx, w, h, t) => drawDetailedArtwork(ctx, w, h, state.galleryArt, t));
   } else {
-    if (state.viewArtId) {
+    if (state.viewArtId === "vessel_effigy") {
+      render2DToAscii(drawFullBodyVessel);
+    } else if (state.viewArtId) {
       render2DToAscii((ctx, w, h, t) => drawDetailedArtwork(ctx, w, h, state.viewArtId, t));
     } else if (state.screen === "encounter" && state.encounter) {
       renderWebGL3D(6.0, state.encounter.monsterId, state.combatPulse);
@@ -446,12 +449,29 @@ function setDialogue(tag, title, html, choices) {
 }
 
 // ============================================================================
-// 5. Pack Inspector, World Map, Town, Fen, Camp & Peddler Controllers
+// 5. Pack Inspector, Vessel Effigy, World Map, Town, Fen, Camp & Peddler
 // ============================================================================
+
+function openVesselEffigy() {
+  state.viewArtId = "vessel_effigy";
+  const cls = CLASSES[state.clsKey];
+  const god = PANTHEON[state.godKey];
+  const itemButtons = state.inventory.map((it) => ({
+    label: `Inspect Item: ${it.name} (x${it.qty})`,
+    action: `pack-select-${it.name}`
+  }));
+
+  setDialogue(
+    `Vessel Effigy // ${god.name} Vestments`,
+    `${cls.name} (+${state.weaponTier} Blade)`,
+    `${cls.lore}<br><br><em>Sweep your cursor across the plate to shift the chiaroscuro light over your armor and patron-dyed cloth.</em>`,
+    [...itemButtons, { label: "← Close Vessel Effigy", action: "pack-close" }]
+  );
+}
 
 function openPackInspector(selectedName = null) {
   if (state.inventory.length === 0) {
-    spawnFloatText(0.5, 0.5, "PACK IS EMPTY", "#8f877b");
+    openVesselEffigy();
     return;
   }
 
@@ -469,9 +489,15 @@ function openPackInspector(selectedName = null) {
     action: `pack-select-${it.name}`
   }));
 
-  const actionChoices = [];
+  const actionChoices = [
+    {
+      label: "★ Inspect Full-Body Vessel Effigy",
+      action: "pack-effigy",
+      isSecret: true
+    }
+  ];
   if (meta.usable) {
-    actionChoices.push({
+    actionChoices.unshift({
       label: `★ Use / Consume ${itemObj.name} (x${itemObj.qty})`,
       action: `pack-use-${itemObj.name}`,
       isSecret: true
@@ -666,7 +692,11 @@ function handleAction(action) {
   playSFX(155);
   const stats = getComputedStats();
 
-  // 1) Pack Inspector Actions
+  // 1) Pack Inspector & Full-Body Effigy Actions
+  if (action === "pack-effigy") {
+    openVesselEffigy();
+    return;
+  }
   if (action.startsWith("pack-select-")) {
     openPackInspector(action.replace("pack-select-", ""));
     return;
