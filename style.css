@@ -4,7 +4,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: block;
-  src: url("fonts/Cousine-Regular.ttf") format("truetype");
+  src: url("fonts/Cousine-Regular.woff2") format("woff2");
 }
 
 @font-face {
@@ -12,7 +12,7 @@
   font-style: italic;
   font-weight: 400;
   font-display: block;
-  src: url("fonts/Cousine-Italic.ttf") format("truetype");
+  src: url("fonts/Cousine-Italic.woff2") format("woff2");
 }
 
 @font-face {
@@ -20,15 +20,7 @@
   font-style: normal;
   font-weight: 700;
   font-display: block;
-  src: url("fonts/Cousine-Bold.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Cousine";
-  font-style: italic;
-  font-weight: 700;
-  font-display: block;
-  src: url("fonts/Cousine-BoldItalic.ttf") format("truetype");
+  src: url("fonts/Cousine-Bold.woff2") format("woff2");
 }
 
 * {
@@ -460,6 +452,7 @@ canvas#mini-portrait {
   border: 1px solid #453b32;
   color: #f0e8da;
   padding: 2px 6px;
+  font-family: inherit;
   font-size: 10px;
   cursor: pointer;
 }

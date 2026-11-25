@@ -131,19 +131,20 @@ The application owner. It:
 - Configures combat and dungeon callback hooks.
 - Checks for and restores saved games.
 
-The ASCII pipeline uses `COLS`, `ROWS`, `CELL_W`, `CELL_H`, and the ramp presets in `src/typography.js`. The display canvas is separate from the low-resolution buffer and WebGL readback canvas. The first frame waits on `document.fonts.ready` (and an explicit bold Cousine load) before `renderPixelsToAscii` runs.
+The ASCII pipeline uses `COLS`, `ROWS`, `CELL_W`, `CELL_H`, and the ramp presets in `src/typography.js`. The display canvas is separate from the low-resolution buffer and WebGL readback canvas. The first frame waits on `document.fonts.ready` and an explicit bold Cousine load, raced against a 2 second cap, before `renderPixelsToAscii` runs.
 
-Shade ramps, darkest to lightest:
+Shade ramps, darkest to lightest. Coverage is mean alpha of Cousine Bold at 8px inside a 6×8 cell:
 
-- `density` (default): `" .·:;+#%@░▒"`, ordered by measured Cousine Bold ink in a 6×8 cell. `█` is not a step; it is drawn only when source luminance is at least `0.97`.
-- `legacy`: the previous lettered ramp, kept for comparison, including its terminal `█`.
+- `density` (default): `" .:;*+=#%@"` (10 glyphs). Mean alpha rises from 0 through . 0.025, : 0.050, ; 0.075, * 0.094, + 0.141, = 0.154, # 0.208, % 0.258, @ 0.287.
+- `legacy`: the lettered ramp shipped before this pass, including its terminal `█`. No separate hotspot rule.
 - `punct`: `" .:~*=+#%@"`.
+- `blocks`: the first density string `" .·:;+#%@░▒"`. Mean alpha is not monotone: ░ is 0.143 and ▒ is 0.262, while @ is 0.287, so the block tiers flatten bright areas.
 
-`?ramp=legacy|density|punct` (or `0|1|2`) selects a ramp. `]` and `[` cycle it and write the choice back to the query string. A `RAMP <id>` label is drawn only after the query param or a cycle key is used. Sobel edges and the 4×4 Bayer matrix are unchanged.
+On `density`, `punct`, and `blocks`, a non-edge cell draws `█` only when source luminance is at least `0.92`. `]` and `[` cycle the four presets unless the event target is an `input` or `textarea`. `?ramp=legacy|density|punct|blocks` (or `0|1|2|3`) selects one. A `RAMP <id>` label is drawn only after the query param or a cycle key is used. Sobel edges and the 4×4 Bayer matrix are unchanged.
 
 ### `src/typography.js`
 
-Leaf module. Exports `FONT_STACK`, `canvasFont`, the three ramp presets, `DEFAULT_RAMP_ID`, `HOTSPOT_LUM`, and `RAMP_SEPARATION`. It does not import.
+Leaf module. Exports `FONT_STACK`, `canvasFont`, the four ramp presets (`legacy`, `density`, `punct`, `blocks`), `DEFAULT_RAMP_ID`, `HOTSPOT_LUM` (`0.92`), and `RAMP_SEPARATION` (`0.2`, two steps of the 10-glyph ramps). It does not import.
 
 ### `src/shaders.js`
 
@@ -491,11 +492,16 @@ Because the project has no build configuration in the current repository, syntax
 ### 2026-11-25 — Approved art pass (dithered glyph-pixel)
 
 - Owner approval for this pass overrides the zero-pixel default. The picture stays dithered Cousine glyphs, not literal ASCII.
-- Bundled Cousine (Regular, Bold, Italic, Bold Italic) under `fonts/` with `fonts/OFL.txt`. CSS and every canvas `font` use it. The animation loop starts after `document.fonts.ready`.
-- Shade ramps live in `src/typography.js`. Default is the measured density ramp `" .·:;+#%@░▒"`. `█` is reserved for source luminance `>= 0.97` on the density and punctuation ramps. `?ramp=` and the `[` / `]` keys cycle `legacy`, `density`, and `punct`.
+- Bundled Cousine Regular, Bold, and Italic as WOFF2 under `fonts/` with `fonts/OFL.txt`. CSS and every canvas `font` use it. The animation loop starts after `document.fonts.ready`, capped at 2 seconds with `Promise.race`.
+- Shade ramps live in `src/typography.js`. Default is `" .:;*+=#%@"` ordered by mean alpha, not by an alpha>16 pixel count. The previous block string is the `blocks` preset. `█` is reserved for non-edge cells at source luminance `>= 0.92` on `density`, `punct`, and `blocks`. `?ramp=` and the `[` / `]` keys cycle `legacy`, `density`, `punct`, and `blocks`. Bracket keys do not capture focus inside an input or textarea.
 - Forge patron-glow center alpha is `0.30`. Vessel subject fills are lifted to stay at least two shortest-ramp steps above that glow.
 - Glyph-rasterized plate, portrait, cover, and vessel strokes below 2px are now 2px. `drawWorldMap` strokes were not edited.
-- `#82d988` is now `#7da882`. The dungeon chart overlay is 10.5px. CSS type sizes are 10px, 11.5px, and 17px.
+- `#82d988` is now `#7da882`. The dungeon chart overlay is 10.5px. CSS type sizes are 10px, 11.5px, and 17px. Inventory item buttons inherit Cousine.
+
+### 2026-11-25 — Ramp measurement correction
+
+- Replaced the default ramp with `" .:;*+=#%@"` after a mean-alpha remeasure (░ 0.143, ▒ 0.262, @ 0.287). The old string is `blocks`.
+- `HOTSPOT_LUM` is `0.92`. Mitre stroke `#f2eadc` measures 0.921, so a gate of 0.93 left the spikes on `@`. Fonts are WOFF2 (Regular, Bold, Italic). Font load is raced against 2 seconds. `.inv-item` inherits the UI face. `[` / `]` ignore inputs and textareas.
 
 ### 2026-11-25
 

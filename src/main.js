@@ -1489,6 +1489,8 @@ configureDimensions();
 window.addEventListener("keydown", (event) => {
   if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return;
   if (event.key !== "]" && event.key !== "[") return;
+  const tag = event.target instanceof Element ? event.target.tagName : "";
+  if (tag === "INPUT" || tag === "TEXTAREA") return;
   event.preventDefault();
   setRampIndex(rampIndex + (event.key === "]" ? 1 : -1));
 });
@@ -1496,9 +1498,9 @@ window.addEventListener("keydown", (event) => {
 function bootRaster() {
   const sizes = [3, 8, 10.5, 11, 12, 16];
   const loads = sizes.map((px) => document.fonts.load(canvasFont(px)));
-  Promise.all([document.fonts.ready, ...loads]).then(() => {
-    loop();
-  }, () => {
+  const fontsReady = Promise.all([document.fonts.ready, ...loads]).catch(() => {});
+  const cap = new Promise((resolve) => setTimeout(resolve, 2000));
+  Promise.race([fontsReady, cap]).then(() => {
     loop();
   });
 }
