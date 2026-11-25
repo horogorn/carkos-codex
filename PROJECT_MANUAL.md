@@ -32,6 +32,8 @@ THE CARKOS CODEX is a browser-only ES module game using:
 - `src/combat.js` for turn-based encounter logic and physical dice animation.
 - `src/art2d.js` for public 2D drawing APIs and retained portraits/maps/covers.
 - `src/assets/*.js` for extracted NPC, monster, item, and vessel drawings.
+- `src/typography.js` for the bundled Cousine canvas stack and the ASCII shade-ramp presets.
+- `fonts/` for the self-hosted Cousine faces and `fonts/OFL.txt`.
 
 There is currently no package manifest or build step. Run the project through a local HTTP server so ES modules and canvas/browser APIs are available.
 
@@ -56,6 +58,8 @@ Do not rename or remove DOM IDs used by `src/main.js` or `src/combat.js` without
 ### `style.css`
 
 Controls the terminal-grimoire layout, toolbar, panels, HUD, inventory, buttons, vertical/reel mode, CRT overlay, and encounter styles.
+
+The UI face is self-hosted Cousine (`fonts/`, SIL OFL in `fonts/OFL.txt`), declared with `@font-face` and used as `"Cousine", "Courier New", Courier, monospace`. CSS type sizes are 10px, 11.5px, and 17px. Toolbar buttons and the time pill use 10px so the longest phase name stays on one row; titles are 17px and reading text is 11.5px.
 
 Key rules:
 
@@ -127,7 +131,19 @@ The application owner. It:
 - Configures combat and dungeon callback hooks.
 - Checks for and restores saved games.
 
-The ASCII pipeline uses `COLS`, `ROWS`, `CELL_W`, `CELL_H`, and `RAMP`. The display canvas is separate from the low-resolution buffer and WebGL readback canvas.
+The ASCII pipeline uses `COLS`, `ROWS`, `CELL_W`, `CELL_H`, and the ramp presets in `src/typography.js`. The display canvas is separate from the low-resolution buffer and WebGL readback canvas. The first frame waits on `document.fonts.ready` (and an explicit bold Cousine load) before `renderPixelsToAscii` runs.
+
+Shade ramps, darkest to lightest:
+
+- `density` (default): `" .·:;+#%@░▒"`, ordered by measured Cousine Bold ink in a 6×8 cell. `█` is not a step; it is drawn only when source luminance is at least `0.97`.
+- `legacy`: the previous lettered ramp, kept for comparison, including its terminal `█`.
+- `punct`: `" .:~*=+#%@"`.
+
+`?ramp=legacy|density|punct` (or `0|1|2`) selects a ramp. `]` and `[` cycle it and write the choice back to the query string. A `RAMP <id>` label is drawn only after the query param or a cycle key is used. Sobel edges and the 4×4 Bayer matrix are unchanged.
+
+### `src/typography.js`
+
+Leaf module. Exports `FONT_STACK`, `canvasFont`, the three ramp presets, `DEFAULT_RAMP_ID`, `HOTSPOT_LUM`, and `RAMP_SEPARATION`. It does not import.
 
 ### `src/shaders.js`
 
@@ -200,10 +216,14 @@ index.html
   -> src/main.js
        -> src/lore.js
        -> src/state.js -> src/lore.js
+       -> src/typography.js
        -> src/shaders.js -> src/lore.js, src/state.js
-       -> src/art2d.js -> src/lore.js, src/state.js, src/assets/*.js
-       -> src/dungeon.js -> src/state.js
-       -> src/combat.js -> src/lore.js, src/state.js
+       -> src/art2d.js -> src/lore.js, src/state.js, src/typography.js, src/assets/*.js
+       -> src/dungeon.js -> src/state.js, src/typography.js
+       -> src/combat.js -> src/lore.js, src/state.js, src/typography.js
+
+src/typography.js
+  -> no imports
 
 src/assets/*.js
   -> no imports; receive lore-derived values and state-derived values as arguments
@@ -252,7 +272,9 @@ For 3D:
 - camp -> environment `4` or `5`
 - encounter -> environment `6`
 
-Zero-pixel-change artwork refactors require preserving every coordinate, gradient, color, branch, formula, and call sequence. Drawing time must remain passed through as `t` and use the original animation formulas.
+Refactors that are not an approved art pass still require preserving every coordinate, gradient, color, branch, formula, and call sequence. Drawing time must remain passed through as `t` and use the original animation formulas.
+
+An owner-approved art pull request may change pixels. The shipped picture stays a dithered glyph-pixel raster (Cousine glyphs in the low-resolution grid), not literal ASCII, unless the owner asks otherwise. Plate and cover strokes that are glyph-rasterized are kept at 2px or thicker. `drawWorldMap` is a chart, not a plate, and was left unchanged by the type pass so a parallel map cleanup can land cleanly. Post-ASCII overlay strokes (hotspot frames, the dungeon chart) are vector and are not part of that 2px floor. The forge patron wash center stop is alpha `0.30`. Vessel `clothDark`, `clothMid`, and `parchment` are lifted, when needed, until their luminance is at least `RAMP_SEPARATION` (two steps of the shortest ramp) above that wash.
 
 ## 6. State and Progression
 
@@ -422,7 +444,7 @@ Update `ENEMY_TEMPLATES`, combat prop mappings, WebGL monster rendering if neede
 
 ### Changing visual output
 
-Preserve coordinates/colors/formulas unless the change explicitly requests visual alteration. For 2D refactors, retain the public API and original context state/transform/restoration behavior.
+Preserve coordinates, colors, and formulas unless the owner has approved that art pass or the task explicitly requests a visual change. Approved art passes keep the dithered glyph-pixel look. For 2D refactors, retain the public API and original context state, transform, and restoration behavior. New UI greens for heal/ok text use `#7da882` (replacing `#82d988`). Canvas overlay text is at least 10.5px.
 
 ## 14. Frozen/Protected Files
 
@@ -465,6 +487,15 @@ Before completing a change:
 Because the project has no build configuration in the current repository, syntax verification is the default minimum. Browser testing should be done through a local HTTP server.
 
 ## 16. Change Log
+
+### 2026-11-25 — Approved art pass (dithered glyph-pixel)
+
+- Owner approval for this pass overrides the zero-pixel default. The picture stays dithered Cousine glyphs, not literal ASCII.
+- Bundled Cousine (Regular, Bold, Italic, Bold Italic) under `fonts/` with `fonts/OFL.txt`. CSS and every canvas `font` use it. The animation loop starts after `document.fonts.ready`.
+- Shade ramps live in `src/typography.js`. Default is the measured density ramp `" .·:;+#%@░▒"`. `█` is reserved for source luminance `>= 0.97` on the density and punctuation ramps. `?ramp=` and the `[` / `]` keys cycle `legacy`, `density`, and `punct`.
+- Forge patron-glow center alpha is `0.30`. Vessel subject fills are lifted to stay at least two shortest-ramp steps above that glow.
+- Glyph-rasterized plate, portrait, cover, and vessel strokes below 2px are now 2px. `drawWorldMap` strokes were not edited.
+- `#82d988` is now `#7da882`. The dungeon chart overlay is 10.5px. CSS type sizes are 10px, 11.5px, and 17px.
 
 ### 2026-11-25
 

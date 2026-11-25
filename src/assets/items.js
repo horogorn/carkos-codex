@@ -20,7 +20,7 @@ export function drawItemPlate(ctx, artId, t, godRgb) {
     ctx.fill();
 
     ctx.strokeStyle = "rgba(235, 230, 220, 0.7)";
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 2;
     for (let s = 0; s < 3; s++) {
       const sy = -15 - ((t * 7 + s * 8) % 20);
       ctx.beginPath();
@@ -32,7 +32,7 @@ export function drawItemPlate(ctx, artId, t, godRgb) {
   if (artId === 'shard') {
 
     ctx.strokeStyle = `rgb(${gr}, ${gg}, ${gb})`;
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 2;
     for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
       ctx.beginPath();
       ctx.moveTo(Math.cos(a) * 14, Math.sin(a) * 14);

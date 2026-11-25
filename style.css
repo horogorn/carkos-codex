@@ -1,3 +1,36 @@
+/* Cousine is metric-compatible with Courier New. License: fonts/OFL.txt */
+@font-face {
+  font-family: "Cousine";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("fonts/Cousine-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Cousine";
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+  src: url("fonts/Cousine-Italic.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Cousine";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("fonts/Cousine-Bold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Cousine";
+  font-style: italic;
+  font-weight: 700;
+  font-display: block;
+  src: url("fonts/Cousine-BoldItalic.ttf") format("truetype");
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -17,7 +50,7 @@
 body {
   background-color: var(--bg-void);
   color: var(--text-bone);
-  font-family: "Courier New", Courier, monospace;
+  font-family: "Cousine", "Courier New", Courier, monospace;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -37,7 +70,7 @@ body {
   margin-bottom: 8px;
   padding-bottom: 7px;
   border-bottom: 1px solid var(--border-dim);
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--text-ash);
   flex-wrap: wrap;
   gap: 6px;
@@ -59,7 +92,7 @@ body {
   border: 1px solid #383028;
   padding: 3px 8px;
   color: #e6dfd3;
-  font-size: 10.5px;
+  font-size: 10px;
   letter-spacing: 1px;
 }
 
@@ -76,7 +109,7 @@ body {
   border: 1px solid #362f29;
   padding: 4px 8px;
   font-family: inherit;
-  font-size: 10.5px;
+  font-size: 10px;
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -243,7 +276,7 @@ canvas#main-canvas {
   border: 1px solid #2b241e;
   padding: 5px 8px;
   margin-bottom: 7px;
-  font-size: 10.5px;
+  font-size: 11.5px;
   color: #cfc6b8;
 }
 
@@ -272,7 +305,7 @@ canvas#main-canvas {
   color: #b8afa2;
   padding: 5px 5px;
   font-family: inherit;
-  font-size: 10.5px;
+  font-size: 11.5px;
   cursor: pointer;
   text-align: center;
   transition: all 0.15s ease;
@@ -331,7 +364,7 @@ canvas#mini-portrait {
 
 .hud-curses {
   color: #e05a54;
-  font-size: 9.5px;
+  font-size: 10px;
 }
 
 /* Tactical Encounter Enemy Card */
@@ -340,7 +373,7 @@ canvas#mini-portrait {
   border: 1px solid #59221e;
   padding: 7px 9px;
   margin-bottom: 7px;
-  font-size: 10.5px;
+  font-size: 11.5px;
 }
 
 .enemy-top {
@@ -357,7 +390,7 @@ canvas#mini-portrait {
 }
 
 .enemy-state {
-  font-size: 9.5px;
+  font-size: 10px;
   padding: 1px 5px;
   background: #2e110f;
   color: #ff8a84;
@@ -406,7 +439,7 @@ canvas#mini-portrait {
   color: #dfd7c8;
   padding: 1px 6px;
   font-family: inherit;
-  font-size: 9.5px;
+  font-size: 10px;
   cursor: pointer;
   text-transform: uppercase;
 }
@@ -454,7 +487,7 @@ canvas#mini-portrait {
   color: #dcd4c6;
   padding: 7px 9px;
   font-family: inherit;
-  font-size: 11px;
+  font-size: 11.5px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -478,7 +511,7 @@ canvas#mini-portrait {
 }
 
 .choice-btn.lvlup {
-  border-color: #82d988;
+  border-color: #7da882;
   background: #112113;
   color: #eaffec;
 }

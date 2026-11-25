@@ -11,7 +11,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.moveTo(5, 8);  ctx.lineTo(9, 19);  ctx.lineTo(13, 27); ctx.lineTo(8, 29);
     ctx.stroke();
     ctx.strokeStyle = "#cfc7ba";
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-5, 11); ctx.lineTo(-5, 25);
     ctx.moveTo(6, 11);  ctx.lineTo(12, 25);
@@ -31,7 +31,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.ellipse(0, -7, 10, 12, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = "#e8dfd1";
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 2;
     for (let r = 0; r < 4; r++) {
       const ry = -13 + r * 3.4;
       ctx.beginPath();
@@ -48,7 +48,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = "#f2eadc";
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 2;
     [
       [7, -17, 11, -30],
       [11, -15, 19, -24],
@@ -67,7 +67,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.fillStyle = "#080706";
     ctx.fillRect(-5, -24, 4.5, 2.2);
     ctx.strokeStyle = "#7a7065";
-    ctx.lineWidth = 1.0;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-3, -31); ctx.lineTo(-3, -18);
     ctx.moveTo(1, -31);  ctx.lineTo(1, -18);
@@ -87,7 +87,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = "#171412";
-    ctx.lineWidth = 1.3;
+    ctx.lineWidth = 2;
     ctx.stroke();
 
     ctx.strokeStyle = "#d9d0c1";
@@ -99,7 +99,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     const flailX = -24 + sway * 1.3;
     const flailY = 17;
     ctx.strokeStyle = "#9e9588";
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 2;
     ctx.setLineDash([2.2, 1.8]);
     ctx.beginPath();
     ctx.moveTo(-22, -10);
@@ -112,7 +112,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.arc(flailX, flailY, 5.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = wpnTier > 0 ? godGlow : "#e8dfd1";
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
       ctx.beginPath();
       ctx.moveTo(flailX + Math.cos(a) * 4, flailY + Math.sin(a) * 4);
@@ -146,14 +146,14 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = "#cfc7ba";
-    ctx.lineWidth = 1.3;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-7, -3); ctx.lineTo(6, -3);
     ctx.moveTo(-7, 1);  ctx.lineTo(6, 1);
     ctx.stroke();
 
     ctx.strokeStyle = "#e8dfd1";
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(8, -10);  ctx.lineTo(17, -16);
     ctx.moveTo(17, -16); ctx.lineTo(21, -22);
@@ -171,7 +171,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = "#dfd5c7";
-    ctx.lineWidth = 1.1;
+    ctx.lineWidth = 2;
     ctx.stroke();
 
     ctx.fillStyle = "#e6d298";
@@ -185,7 +185,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.fill();
 
     ctx.strokeStyle = wpnTier > 0 ? godGlow : "#f2eadc";
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-12, -2); ctx.lineTo(-26, -33);
     ctx.stroke();
@@ -239,7 +239,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.fillRect(1.0, -22, 1.5, 1.5);
 
     ctx.strokeStyle = "#e8dfd1";
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-9, -12); ctx.lineTo(-13, 3); ctx.lineTo(-16, 13);
     ctx.stroke();
@@ -270,7 +270,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.moveTo(4, 7);  ctx.lineTo(7, 19);  ctx.lineTo(8, 28);  ctx.lineTo(13, 29);
     ctx.stroke();
     ctx.strokeStyle = "#cfc7ba";
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-5, 11); ctx.lineTo(-5, 25);
     ctx.moveTo(5, 11);  ctx.lineTo(7, 25);
@@ -282,7 +282,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.ellipse(8, -11, 7.5, 9.5, 0.25, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = "#cfc7ba";
-    ctx.lineWidth = 1.1;
+    ctx.lineWidth = 2;
     ctx.stroke();
 
     // Tattered jagged cloak & patched tunic (deity-tinted)
@@ -306,7 +306,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = parchment;
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(7, -14); ctx.lineTo(-7, 3);
     ctx.stroke();
@@ -342,14 +342,14 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.stroke();
     // Right arm gripping staff
     ctx.strokeStyle = "#dfd5c7";
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(7, -11); ctx.lineTo(13, -4); ctx.lineTo(15, -8);
     ctx.stroke();
 
     // Extended bony left arm holding glowing iron cage lantern clear of the body
     ctx.strokeStyle = "#e8dfd1";
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-8, -12); ctx.lineTo(-16, -6); ctx.lineTo(-22, -16);
     ctx.stroke();
@@ -370,7 +370,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.fillStyle = "#ffe596";
     ctx.fillRect(lx2 - 3.5, ly2 - 5, 7, 10);
     ctx.strokeStyle = "#141210";
-    ctx.lineWidth = 1.3;
+    ctx.lineWidth = 2;
     ctx.strokeRect(lx2 - 3.5, ly2 - 5, 7, 10);
     ctx.beginPath();
     ctx.moveTo(-22, -16); ctx.lineTo(lx2, ly2 - 7);
@@ -385,7 +385,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = clothMid;
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 2;
     [-6, 0, 6].forEach((fx) => {
       ctx.beginPath();
       ctx.moveTo(fx * 0.7, -12);
@@ -404,7 +404,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
       ctx.arc(dx, dy, 3.0, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = "#171412";
-      ctx.lineWidth = 0.9;
+      ctx.lineWidth = 2;
       ctx.stroke();
     });
 
@@ -417,14 +417,14 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.fillStyle = "#080706";
     ctx.fillRect(-5, -21, 10, 4);
     ctx.strokeStyle = godGlow;
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-7, -21); ctx.quadraticCurveTo(-15, -8, -13, 6);
     ctx.moveTo(7, -21);  ctx.quadraticCurveTo(15, -8, 13, 6);
     ctx.stroke();
 
     ctx.strokeStyle = "#dfd5c7";
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(8, -10); ctx.lineTo(18, -5);
     ctx.stroke();
@@ -432,7 +432,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     const cx2 = 19 + sway * 1.5;
     const cy2 = 10;
     ctx.strokeStyle = "#b59b6d";
-    ctx.lineWidth = 1.1;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(18, -5); ctx.lineTo(cx2, cy2 - 4);
     ctx.stroke();
@@ -464,7 +464,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.fill();
 
     ctx.strokeStyle = "#cfc7ba";
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = 2;
     [
       [-7, -14, -18, -26],
       [-9, -11, -21, -17],
@@ -481,7 +481,7 @@ export function drawVesselClassBody(ctx, clsKey, palette, t, wpnTier) {
     ctx.ellipse(0, -21, 5.5, 7.0, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = "#e8dfd1";
-    ctx.lineWidth = 1.7;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-3, -27); ctx.lineTo(-13, -37);
     ctx.moveTo(-8, -32); ctx.lineTo(-6, -39);

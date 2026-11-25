@@ -17,7 +17,7 @@ export function drawNpcPlate(ctx, artId, t, godRgb) {
 
     // Jagged layered gorget plates
     ctx.strokeStyle = "#171412";
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 2;
     for (let i = 0; i < 3; i++) {
       ctx.beginPath();
       ctx.arc(0, 12 + i * 5, 16 + i * 4, 0.2, Math.PI - 0.2);
@@ -43,7 +43,7 @@ export function drawNpcPlate(ctx, artId, t, godRgb) {
 
     // Fluted ridges
     ctx.strokeStyle = "#292520";
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 2;
     [-10, 0, 10].forEach((rx) => {
       ctx.beginPath();
       ctx.moveTo(0, -32);
@@ -70,7 +70,7 @@ export function drawNpcPlate(ctx, artId, t, godRgb) {
 
     // Animated dripping rust-tears
     ctx.strokeStyle = "#6e2620";
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 2;
     [-8, -5, 7].forEach((tx, idx) => {
       const dropLen = 6 + ((t * 5 + idx * 4) % 10);
       ctx.beginPath();
@@ -142,7 +142,7 @@ export function drawNpcPlate(ctx, artId, t, godRgb) {
     ctx.fill();
 
     ctx.strokeStyle = "#080506";
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-7, 2);
     ctx.quadraticCurveTo(0, 9, 7, 2);
@@ -152,7 +152,7 @@ export function drawNpcPlate(ctx, artId, t, godRgb) {
   if (artId === 'priest') {
 
     ctx.strokeStyle = `rgb(${gr}, ${gg}, ${gb})`;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     for (let a = -Math.PI * 0.9; a <= -Math.PI * 0.1; a += 0.25) {
       ctx.beginPath();
       ctx.moveTo(Math.cos(a) * 16, -14 + Math.sin(a) * 16);
@@ -184,7 +184,7 @@ export function drawNpcPlate(ctx, artId, t, godRgb) {
 
     // Mitre crack & crimson sigil
     ctx.strokeStyle = "#2b2520";
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-4, -30);
     ctx.lineTo(-1, -22);
@@ -242,7 +242,7 @@ export function drawNpcPlate(ctx, artId, t, godRgb) {
       ctx.arc(gx, -4, 5.2, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = "#d9c282";
-      ctx.lineWidth = 1.6;
+      ctx.lineWidth = 2;
       ctx.stroke();
       ctx.fillStyle = "#e6f5f0";
       ctx.beginPath();
@@ -263,7 +263,7 @@ export function drawNpcPlate(ctx, artId, t, godRgb) {
     ctx.fill();
 
     ctx.strokeStyle = "rgba(200, 225, 235, 0.55)";
-    ctx.lineWidth = 1.3;
+    ctx.lineWidth = 2;
     for (let m = -1; m <= 1; m++) {
       ctx.beginPath();
       ctx.moveTo(m * 18 - 10, 22 + m * 4);

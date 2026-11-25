@@ -1,9 +1,10 @@
 // ============================================================================
 // THE CARKOS CODEX — Turn-Based Combat Controller & Physical ASCII d20 Engine
-// Imports ONLY from ./lore.js and ./state.js to keep a strict one-way graph.
+// Imports from ./lore.js, ./state.js, and the typography leaf.
 // ============================================================================
 
 import { ENEMY_TEMPLATES, PANTHEON } from "./lore.js";
+import { canvasFont } from "./typography.js";
 import {
   state,
   fallingDice,
@@ -104,7 +105,7 @@ export function updateAndDrawPhysicalDice(ctx, canvasWidth = ctx.canvas.width, c
     ctx.stroke();
 
     const displayNum = d.settled ? d.finalRoll : Math.floor(Math.random() * 20) + 1;
-    ctx.font = 'bold 16px "Courier New", Courier, monospace';
+    ctx.font = canvasFont(16);
     ctx.fillStyle = d.settled ? "#ffffff" : "#cfc7ba";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -113,7 +114,7 @@ export function updateAndDrawPhysicalDice(ctx, canvasWidth = ctx.canvas.width, c
     if (d.settled) {
       const sign = d.mod >= 0 ? `+${d.mod}` : `${d.mod}`;
       const badge = `${d.label}: d20(${d.finalRoll})${sign} = ${d.finalRoll + d.mod}`;
-      ctx.font = 'bold 11px "Courier New", Courier, monospace';
+      ctx.font = canvasFont(11);
       const tw = ctx.measureText(badge).width;
       ctx.fillStyle = "rgba(5, 4, 4, 0.95)";
       ctx.fillRect(-tw / 2 - 5, -radius - 22, tw + 10, 16);
@@ -239,7 +240,7 @@ function resolveEnemyTurn(log) {
     if (enc.artId === "mirevisage" && enc.turnIdx % 2 === 0) state.curses.add("drift");
     if (enc.artId === "marionette" && enc.turnIdx % 2 === 1) state.curses.add("dread");
   } else {
-    spawnFloatText(0.28, 0.62, "WARDED!", "#82d988");
+    spawnFloatText(0.28, 0.62, "WARDED!", "#7da882");
   }
 
   enc.turnIdx++;
