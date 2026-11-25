@@ -428,8 +428,8 @@ export function drawCoverArt(ctx, w, h, t) {
   ctx.closePath();
   ctx.fill();
 
-  // Animated sun-mitre crown spikes
-  ctx.strokeStyle = "#f2eadc";
+  // #fbf8f3 is source luminance ~0.974, so non-edge tips clear the 0.97 hotspot gate.
+  ctx.strokeStyle = "#fbf8f3";
   ctx.lineWidth = 2;
   for (let a = -2.4; a <= -0.7; a += 0.28) {
     ctx.beginPath();

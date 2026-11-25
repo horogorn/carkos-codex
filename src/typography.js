@@ -26,8 +26,9 @@ export const RAMP_LEGACY = " .·,:;░▒+itIYVXRBM#%@█";
  *   Block glyphs under the same measure: ░ 0.143, ▒ 0.262, █ 0.804.
  *   ░ sits next to + and ▒ sits just under @, so a ramp that places the
  *   blocks after @ is not monotone. Those two stay on the `blocks` preset.
- *   █ is not a step. Non-edge cells at luminance >= HOTSPOT_LUM use it
- *   (mitre spikes, eyes, ember cores).
+ *   █ is not a step. Non-edge cells at luminance >= HOTSPOT_LUM (0.97) use it.
+ *   The cover mitre stroke is #fbf8f3 so its tips clear that gate; a lower
+ *   gate also turned lamps, windows, and map markers into blocks.
  */
 export const RAMP_DENSITY = " .:;*+=#%@";
 
@@ -49,12 +50,8 @@ export const RAMP_PRESETS = [
 
 export const DEFAULT_RAMP_ID = "density";
 
-/**
- * Non-edge cells at or above this source luminance draw █.
- * Mitre stroke #f2eadc is 0.921 with the rasterizer's 0.299/0.587/0.114
- * weights, so the gate is 0.92. A gate of 0.93 leaves those spikes on @.
- */
-export const HOTSPOT_LUM = 0.92;
+/** Non-edge cells at or above this source luminance draw █. */
+export const HOTSPOT_LUM = 0.97;
 
 /**
  * Luminance gap of two steps on the shortest presets (density and punct,
