@@ -12,7 +12,8 @@ import {
   getComputedStats,
   grantXP,
   spawnFloatText,
-  saveGame
+  saveGame,
+  dungeonFloorKey
 } from "./state.js";
 
 // Cross-module callbacks registered once by src/main.js at boot
@@ -32,9 +33,62 @@ export function configureDungeon(callbacks) {
 
 // ============================================================================
 // 1. Procedural Multi-Level Generator (Secret Rooms, Puzzles & Floor Bosses)
+//
+// Floor cache contract (state.dungeonFloors):
+//   key   = dungeonFloorKey(dungeonId, depth)  →  "ossuary:2"
+//   miss  = buildDungeonFloor(dungeonId, depth, dungeonFloorSeed(...))
+//   hit   = the stored floor object (mutated in place while it is state.dungeon)
+// A later seeded generator replaces the body of buildDungeonFloor. It must stay
+// a pure function of (dungeonId, depth, floorSeed). The cache, not the builder,
+// decides whether a visited floor is restored. The present builder ignores
+// floorSeed and keeps the historical Math.random layout.
 // ============================================================================
 
-export function generateDungeon(dungeonId, depth = 1) {
+export function dungeonFloorSeed(dungeonId, depth) {
+  const label = `${dungeonId}:${depth}`;
+  let h = 2166136261;
+  for (let i = 0; i < label.length; i++) {
+    h ^= label.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  h ^= Math.imul(depth, 0x9e3779b9);
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+  h ^= h >>> 13;
+  return h >>> 0;
+}
+
+export function clearDungeonFloorCache(dungeonId) {
+  if (!state.dungeonFloors || typeof state.dungeonFloors !== "object") {
+    state.dungeonFloors = {};
+  }
+  if (!dungeonId) {
+    state.dungeonFloors = {};
+    return;
+  }
+  const prefix = `${dungeonId}:`;
+  for (const key of Object.keys(state.dungeonFloors)) {
+    if (key.startsWith(prefix)) delete state.dungeonFloors[key];
+  }
+}
+
+// Read-or-create. Callers that want a brand-new expedition clear the cache first.
+export function getDungeonFloor(dungeonId, depth) {
+  if (!state.dungeonFloors || typeof state.dungeonFloors !== "object") {
+    state.dungeonFloors = {};
+  }
+  const key = dungeonFloorKey(dungeonId, depth);
+  const cached = state.dungeonFloors[key];
+  if (cached) return cached;
+  const floor = buildDungeonFloor(dungeonId, depth, dungeonFloorSeed(dungeonId, depth));
+  state.dungeonFloors[key] = floor;
+  return floor;
+}
+
+export function buildDungeonFloor(dungeonId, depth, floorSeed) {
+  if (typeof floorSeed !== "number" || !Number.isFinite(floorSeed)) {
+    throw new Error("buildDungeonFloor requires a numeric floorSeed");
+  }
+
   const isTier2 = dungeonId === "velkhar";
   const baseName = isTier2 ? "Old Velkhar Ruins" : "The Sunken Ossuary";
 
@@ -143,7 +197,7 @@ export function generateDungeon(dungeonId, depth = 1) {
     if (!rooms[cid].isSecret) rooms[cid].revealed = true;
   });
 
-  state.dungeon = {
+  return {
     id: dungeonId,
     baseName,
     depth,
@@ -151,12 +205,47 @@ export function generateDungeon(dungeonId, depth = 1) {
     rooms,
     currentRoomId: 0
   };
+}
+
+function entranceRoom(floor) {
+  return floor.rooms.find((r) => r.type === "entrance") || floor.rooms[0];
+}
+
+// The descending spiral is the cleared floor-boss chamber. An uncleared boss
+// is still a fight, so a floor that was never left via those stairs falls back
+// to the entrance instead of dropping the player into that fight.
+function descendingStairRoom(floor) {
+  return floor.rooms.find((r) => r.type === "boss" && r.cleared) || null;
+}
+
+// arrival "from-above": stand on this floor's entrance stairs (descend / new delve).
+// arrival "from-below": stand on this floor's descending stairs (ascend).
+function enterDungeonFloor(floor, arrival) {
+  state.dungeonFloors[dungeonFloorKey(floor.id, floor.depth)] = floor;
+  state.dungeon = floor;
+
+  const room =
+    arrival === "from-below"
+      ? descendingStairRoom(floor) || entranceRoom(floor)
+      : entranceRoom(floor);
+  if (room) {
+    floor.currentRoomId = room.id;
+    room.visited = true;
+    room.revealed = true;
+  }
+
   state.screen = "dungeon";
   state.viewArtId = null;
-
   hooks.updateNavButtons();
   renderDungeonRoom();
   saveGame();
+}
+
+export function generateDungeon(dungeonId, depth = 1) {
+  // Map travel starts a new expedition. Drop this dungeon's visited floors so
+  // a later descend cannot resurrect a delve the player already left.
+  clearDungeonFloorCache(dungeonId);
+  enterDungeonFloor(getDungeonFloor(dungeonId, depth), "from-above");
 }
 
 // ============================================================================
@@ -531,6 +620,7 @@ export function handleDungeonAction(action) {
   const darkMod = state.torchTurns === 0 ? -3 : 0;
 
   if (action === "exit-dungeon-surface") {
+    if (state.dungeon) clearDungeonFloorCache(state.dungeon.id);
     state.dungeon = null;
     advanceTime(1);
     hooks.updateTimeHUD();
@@ -541,14 +631,16 @@ export function handleDungeonAction(action) {
 
   if (action === "dng-descend-level") {
     const nextDepth = state.dungeon.depth + 1;
+    const dungeonId = state.dungeon.id;
     spawnFloatText(0.5, 0.45, `DESCENDING TO DEPTH ${nextDepth}...`, "#ffe28a");
-    generateDungeon(state.dungeon.id, nextDepth);
+    enterDungeonFloor(getDungeonFloor(dungeonId, nextDepth), "from-above");
     return true;
   }
 
   if (action === "dng-ascend-level") {
     const prevDepth = Math.max(1, state.dungeon.depth - 1);
-    generateDungeon(state.dungeon.id, prevDepth);
+    const dungeonId = state.dungeon.id;
+    enterDungeonFloor(getDungeonFloor(dungeonId, prevDepth), "from-below");
     return true;
   }
 

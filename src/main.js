@@ -27,7 +27,8 @@ import {
   grantXP,
   saveGame,
   hasSavedGame,
-  loadGame
+  loadGame,
+  mapLocationPosition
 } from "./state.js";
 
 import {
@@ -209,13 +210,16 @@ function render2DToAscii(drawFn) {
 
 function getActiveCanvasHotspots() {
   if (state.screen === "map") {
-    return MAP_LOCATIONS.map((loc) => ({
-      id: loc.id,
-      label: loc.name,
-      x: loc.x,
-      y: loc.y,
-      r: 0.07
-    }));
+    return MAP_LOCATIONS.map((loc) => {
+      const pos = mapLocationPosition(loc);
+      return {
+        id: loc.id,
+        label: loc.name,
+        x: pos.x,
+        y: pos.y,
+        r: 0.07
+      };
+    });
   }
   if (state.screen === "town" && !state.viewArtId) {
     return [
@@ -248,8 +252,9 @@ function drawCanvasOverlays() {
 
   if (state.screen === "map" && !state.viewArtId) {
     MAP_LOCATIONS.forEach((loc) => {
-      const px = loc.x * mainCanvas.width;
-      const py = loc.y * mainCanvas.height;
+      const pos = mapLocationPosition(loc);
+      const px = pos.x * mainCanvas.width;
+      const py = pos.y * mainCanvas.height;
       mCtx.font = 'bold 10.5px "Courier New", Courier, monospace';
       mCtx.textBaseline = "top";
       const tw = mCtx.measureText(loc.name).width;
@@ -1240,6 +1245,7 @@ function enterPlayableMode() {
 document.getElementById("btn-begin").addEventListener("click", () => {
   playSFX(110, 0.25);
   state.dungeon = null;
+  state.dungeonFloors = {};
   enterPlayableMode();
   openWorldMap();
   saveGame();
