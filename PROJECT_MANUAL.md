@@ -1,7 +1,7 @@
 # THE CARKOS CODEX — Project Manual
 
-Last updated: 2026-11-25
-Project version: v9.1 Modular Build
+Last updated: 2026-11-26
+Project version: v9.2 Modular Build
 
 This manual describes the current codebase and the rules for changing it. It is part of the project and MUST be updated for every project edit, including code, HTML, CSS, assets, dependencies, commands, and documentation.
 
@@ -28,7 +28,7 @@ THE CARKOS CODEX is a browser-only ES module game using:
 - `src/lore.js` as the static catalog/base data layer.
 - `src/state.js` for mutable runtime state, inventory, progression, and local persistence.
 - `src/shaders.js` for WebGL raymarching and 3D scene rendering.
-- `src/dungeon.js` for procedural dungeon generation and room actions.
+- `src/dungeon.js` for procedural dungeon generation, the visited-floor cache, and room actions.
 - `src/combat.js` for turn-based encounter logic and physical dice animation.
 - `src/art2d.js` for public 2D drawing APIs and retained portraits/maps/covers.
 - `src/assets/*.js` for extracted NPC, monster, item, and vessel drawings.
@@ -41,7 +41,7 @@ There is currently no package manifest or build step. Run the project through a 
 
 ### `index.html`
 
-Defines the top toolbar, main canvas, CRT overlay, title panel, character forge, game HUD, and Codex archive.
+Defines the top toolbar, main canvas, CRT overlay, title panel, character forge, game HUD, and Codex archive. The document head includes an inline empty icon so a static file server does not log a missing `favicon.ico`.
 
 Important stable DOM groups:
 
@@ -82,7 +82,7 @@ Canonical static data module. It exports:
 - `QUESTS`
 - `ENEMY_TEMPLATES`
 
-Lore and catalog data should be added here rather than invented inside rendering or action modules.
+Lore and catalog data should be added here rather than invented inside rendering or action modules. `MAP_LOCATIONS` coordinates are a static catalog. The Masked Peddler's roaming chart position is not stored on that entry; `drawWorldMap` writes it to `state.peddlerPos`, and map markers, labels, and hotspots read it back through `mapLocationPosition`.
 
 ### `src/state.js`
 
@@ -99,6 +99,8 @@ Core exports:
 - clock/stat/progression helpers: `advanceTime`, `getComputedStats`, `grantXP`
 - persistence: `saveGame`, `hasSavedGame`, `loadGame`, `clearSave`
 - deterministic PRNG: `mulberry32`
+- world-map peddler position: `syncPeddlerPosition`, `mapLocationPosition`
+- dungeon floor-cache key: `dungeonFloorKey`
 
 `state.screen` values are:
 
@@ -112,9 +114,16 @@ Core exports:
 - `encounter`
 - `gallery`
 
-Important state groups include character selection, progression, health/shield, clock, inventory, curses, Pantheon brand, camp upgrades, dungeon data, encounter data, pointer position, and transient animation queues.
+Important state groups include character selection, progression, health/shield, clock, inventory, curses, Pantheon brand, camp upgrades, dungeon data, the visited-floor cache, encounter data, the live peddler map position, pointer position, and transient animation queues.
 
-The local-storage save key is `carkos_codex_save_v9`. Save/load serialization explicitly lists fields. A newly persisted field requires updating `saveGame`, `loadGame`, and this manual.
+The local-storage save key remains `carkos_codex_save_v9`. Save/load serialization explicitly lists fields. A newly persisted field requires updating `saveGame`, `loadGame`, and this manual. Missing fields on older saves must load without throwing.
+
+Persisted additions in v9.2:
+
+- `shield`. Absent on older saves, which load as `0`.
+- `dungeonFloors`, the visited-floor cache. Absent on older saves, which load as `{}`. If that save still has a current `dungeon`, `loadGame` registers that floor in the cache under `dungeonFloorKey(id, depth)` and aliases `state.dungeon` to the cache entry.
+
+`peddlerPos` is recomputed every world-map frame and is not written to the save.
 
 ### `src/main.js`
 
@@ -296,7 +305,7 @@ Inventory is stacked by item name through `addItem` and `removeItem`.
 
 The clock advances in `TIME_PHASES` and wraps to the next day.
 
-Torch use, curses, brand level, camp upgrades, weapon tier, and shield are gameplay state that must be included or intentionally excluded from save payloads.
+Torch use, curses, brand level, camp upgrades, weapon tier, and shield are gameplay state. Shield is included in the save payload. The live peddler chart position is intentionally excluded because it is a function of animation time.
 
 ## 7. Time, World, and Screen Flow
 
@@ -310,20 +319,39 @@ Main navigation:
 - encounter -> victory or continuing encounter
 - gallery -> previous play screen
 
-The world map hotspots are defined from `MAP_LOCATIONS`. Town hotspots are tavern, shrine, and smith. Camp hotspots are hearth, anvil, and totem. Fen hotspots are the Fen-Warden and Mire-Leviathan.
+The world map hotspots are defined from `MAP_LOCATIONS`, except the Masked Peddler, whose `x`/`y` come from `state.peddlerPos` so the hit target follows the lantern. Town hotspots are tavern, shrine, and smith. Camp hotspots are hearth, anvil, and totem. Fen hotspots are the Fen-Warden and Mire-Leviathan.
 
 Dungeon access is blocked by the map navigation guard while in a dungeon, encounter within a dungeon, or dungeon camp.
 
 ## 8. Dungeon System
 
-`generateDungeon(dungeonId, depth)`:
+`generateDungeon(dungeonId, depth)` starts a new expedition from the world map:
+
+- clears that dungeon's visited-floor cache
+- builds a fresh floor (see the cache miss path below)
+- stores it on `state.dungeon`
+- places the player on the entrance stairs
+
+Floor cache:
+
+- Storage is `state.dungeonFloors`. The key is `dungeonFloorKey(dungeonId, depth)` from `src/state.js` (`"${dungeonId}:${depth}"`).
+- `getDungeonFloor(dungeonId, depth)` returns the cached floor or, on a miss, stores `buildDungeonFloor(dungeonId, depth, dungeonFloorSeed(dungeonId, depth))`.
+- `state.dungeon` is the same object as the cache entry for the current floor. Room clears, visits, and reveals mutate that object, so the cache stays current without a separate snapshot step.
+- Ascending (`dng-ascend-level`) restores the previous depth and places the player on that floor's descending stairs: the cleared boss room. If that room is not a cleared boss, the player is placed on the entrance instead.
+- Descending (`dng-descend-level`) restores a deeper floor already in the cache, or builds one on a miss, and places the player on that floor's entrance stairs.
+- Leaving by the surface stairs (`exit-dungeon-surface`) drops that dungeon's cache. Traveling in from the map calls `generateDungeon`, which also drops it, so a new expedition still starts on a fresh depth-1 floor. Beginning a new pilgrimage clears the whole cache.
+- The cache is part of the save (see persistence above). A reload mid-delve restores every visited floor. A save written before `dungeonFloors` existed restores only the current floor and treats other depths as cache misses.
+
+`buildDungeonFloor(dungeonId, depth, floorSeed)` is the plug-in point for a later pure generator of `(dungeonId, depth, floorSeed)`. It must keep that signature. The current body is the historical `Math.random` walk and does not mix `floorSeed` into the layout; `dungeonFloorSeed` still returns a stable unsigned hash so the cache can pass a seed today. Replacing the body with a pure function does not require changes to `getDungeonFloor`, ascend, or descend.
+
+The historical builder:
 
 - creates a 5x5 bounded room graph
 - creates eight or more non-secret rooms
 - adds an adjacent secret vault near a painting room
 - adds a floor boss sanctum
 - marks entrance neighbors as revealed
-- stores data in `state.dungeon`
+- returns the floor object (it does not itself assign `state.dungeon` or change the screen)
 
 Dungeon room fields include:
 
@@ -437,7 +465,7 @@ Update `MAP_LOCATIONS`, main map/click routing, scene hotspots, WebGL environmen
 
 ### Adding dungeon content
 
-Update room pools/names, room rendering, `getDungeonRenderParams`, and `handleDungeonAction`. Preserve room graph invariants and secret/boss placement.
+Update room pools/names, room rendering, `getDungeonRenderParams`, and `handleDungeonAction`. Preserve room graph invariants and secret/boss placement. New floors go through `buildDungeonFloor`; do not bypass `getDungeonFloor` on ascend or descend, or visited floors will be regenerated.
 
 ### Adding combat entities
 
@@ -488,6 +516,17 @@ Before completing a change:
 Because the project has no build configuration in the current repository, syntax verification is the default minimum. Browser testing should be done through a local HTTP server.
 
 ## 16. Change Log
+
+### 2026-11-26 — Merge art pass with v9.2 continuity
+
+- Merged `origin/main` (the approved art pass) into the continuity branch. Cousine, the typography ramps, `HOTSPOT_LUM` 0.97, 2px glyph and world-map strokes, `#7da882`, and the floor cache, shield persistence, peddler chart position, and v9.2 labels all remain.
+
+### 2026-11-25 — v9.2 continuity
+
+- Aligned the visible version with the V9.2 source revision. The `index.html` document title and toolbar wordmark, and this manual, now read v9.2. An inline empty icon in `index.html` stops the browser from requesting a missing `favicon.ico`.
+- `saveGame` / `loadGame` persist `state.shield` on the existing `carkos_codex_save_v9` key. Older saves that omit `shield` load with shield `0`.
+- Moved the Masked Peddler's roaming chart position from `MAP_LOCATIONS` onto `state.peddlerPos`. Catalog coordinates stay fixed. Markers, labels, and hotspots share `mapLocationPosition`, using the same `0.58 + sin(t * 0.4) * 0.06` / `0.69 + cos(t * 0.4) * 0.03` formula as before. The position is not saved.
+- Added a dungeon floor cache keyed by dungeon id and depth. Ascending restores the previous floor and arrives on its descending stairs. Descending into an already visited deeper floor restores that floor and arrives on its entrance stairs. Visited floors persist in the save for the active delve and stay backward compatible when the field is missing. Surface exit and a new map expedition still discard that dungeon's cache so re-entry generates a fresh floor. `buildDungeonFloor(dungeonId, depth, floorSeed)` is the seam for a later pure seeded generator.
 
 ### 2026-11-25 — Approved art pass (dithered glyph-pixel)
 

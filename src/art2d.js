@@ -4,7 +4,7 @@
 // ============================================================================
 
 import { CLASSES, MAP_LOCATIONS, PANTHEON } from "./lore.js";
-import { state } from "./state.js";
+import { mapLocationPosition, state, syncPeddlerPosition } from "./state.js";
 import { RAMP_SEPARATION } from "./typography.js";
 import { drawNpcPlate } from "./assets/npcs.js";
 import { drawMonsterPlate } from "./assets/monsters.js";
@@ -124,16 +124,13 @@ export function drawWorldMap(ctx, w, h, t) {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // Roaming Masked Peddler caravan marker
-  const peddlerNode = MAP_LOCATIONS.find((n) => n.id === "peddler");
-  if (peddlerNode) {
-    peddlerNode.x = 0.58 + Math.sin(t * 0.4) * 0.06;
-    peddlerNode.y = 0.69 + Math.cos(t * 0.4) * 0.03;
-  }
+  // Roaming Masked Peddler. Position lives on state so MAP_LOCATIONS stays static.
+  syncPeddlerPosition(t);
 
   MAP_LOCATIONS.forEach((loc) => {
-    const lx = loc.x * w;
-    const ly = loc.y * h;
+    const pos = mapLocationPosition(loc);
+    const lx = pos.x * w;
+    const ly = pos.y * h;
     const isCur = state.currentMapId === loc.id;
     ctx.fillStyle = loc.type === "merchant" ? "#ffe28a" : (isCur ? "#ff554d" : "#f2eadc");
     ctx.beginPath();

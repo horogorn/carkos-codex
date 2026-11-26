@@ -3,9 +3,17 @@
 // Imports ONLY from ./lore.js to maintain a strict one-way dependency graph.
 // ============================================================================
 
-import { CLASSES, OMENS, QUESTS, TIME_PHASES } from "./lore.js";
+import { CLASSES, MAP_LOCATIONS, OMENS, QUESTS, TIME_PHASES } from "./lore.js";
 
 const SAVE_KEY = "carkos_codex_save_v9";
+
+// Cache key for one generated dungeon floor. Persistence and dungeon.js both
+// use this so a saved delve reloads into the same slots the cache reads.
+export function dungeonFloorKey(dungeonId, depth) {
+  return `${dungeonId}:${depth}`;
+}
+
+const peddlerCatalog = MAP_LOCATIONS.find((loc) => loc.id === "peddler");
 
 // Deterministic PRNG (Mulberry32) for reproducible procedural faces
 export function mulberry32(a) {
@@ -87,6 +95,12 @@ export const state = {
   hp: 14,
   maxHp: 14,
   shield: 0,
+  // Live world-map position of the Masked Peddler. MAP_LOCATIONS stays static;
+  // drawWorldMap overwrites this each frame with the roaming formula. Not saved.
+  peddlerPos: {
+    x: peddlerCatalog ? peddlerCatalog.x : 0.62,
+    y: peddlerCatalog ? peddlerCatalog.y : 0.68
+  },
   sp: 15,
   torchTurns: 8,
   weaponTier: 0,
@@ -103,6 +117,10 @@ export const state = {
   // Camp & Active Delve / Encounter
   camp: { hearth: 1, anvil: 1, totem: 1 },
   dungeon: null,
+  // Visited floors for the active delve, keyed by dungeonFloorKey(id, depth).
+  // state.dungeon is the same object as the entry for the current floor.
+  // Old saves omit this; loadGame defaults it to {}.
+  dungeonFloors: {},
   encounter: null,
   combatPulse: 0,
   diceRolling: false
@@ -156,6 +174,21 @@ export function getComputedStats() {
   return base;
 }
 
+// Roaming chart position. The formula is the one previously written onto the
+// peddler entry of MAP_LOCATIONS; lore coordinates are no longer updated.
+export function syncPeddlerPosition(t) {
+  state.peddlerPos.x = 0.58 + Math.sin(t * 0.4) * 0.06;
+  state.peddlerPos.y = 0.69 + Math.cos(t * 0.4) * 0.03;
+  return state.peddlerPos;
+}
+
+// Hotspots, labels, and the map marker share this so the peddler hit target
+// stays on the moving lantern without mutating the catalog.
+export function mapLocationPosition(loc) {
+  if (loc && loc.id === "peddler") return state.peddlerPos;
+  return loc;
+}
+
 export function grantXP(amount) {
   state.xp += amount;
   while (state.xp >= state.nextXp) {
@@ -167,6 +200,31 @@ export function grantXP(amount) {
     state.pendingLevelUps++;
     spawnFloatText(0.5, 0.35, `LEVEL UP! (LVL ${state.level})`, "#7da882");
   }
+}
+
+function isDungeonFloor(floor) {
+  return Boolean(
+    floor &&
+      typeof floor === "object" &&
+      typeof floor.id === "string" &&
+      floor.id &&
+      Number.isFinite(Number(floor.depth)) &&
+      Array.isArray(floor.rooms) &&
+      floor.rooms.length > 0
+  );
+}
+
+// Old saves have no dungeonFloors. Ignore malformed entries and re-key by
+// dungeon id + depth so the cache cannot drift from dungeonFloorKey().
+function sanitizeDungeonFloors(raw) {
+  const floors = {};
+  if (!raw || typeof raw !== "object") return floors;
+  for (const floor of Object.values(raw)) {
+    if (!isDungeonFloor(floor)) continue;
+    floor.depth = Number(floor.depth);
+    floors[dungeonFloorKey(floor.id, floor.depth)] = floor;
+  }
+  return floors;
 }
 
 // ============================================================================
@@ -190,6 +248,7 @@ export function saveGame() {
       pendingLevelUps: state.pendingLevelUps,
       hp: state.hp,
       maxHp: state.maxHp,
+      shield: state.shield,
       sp: state.sp,
       torchTurns: state.torchTurns,
       weaponTier: state.weaponTier,
@@ -200,7 +259,8 @@ export function saveGame() {
       completedQuests: Array.from(state.completedQuests),
       statBoosts: state.statBoosts,
       camp: state.camp,
-      dungeon: state.dungeon
+      dungeon: state.dungeon,
+      dungeonFloors: state.dungeonFloors
     };
     window.localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
     return true;
@@ -238,6 +298,8 @@ export function loadGame() {
     state.pendingLevelUps = data.pendingLevelUps ?? 0;
     state.hp = data.hp ?? 14;
     state.maxHp = data.maxHp ?? 14;
+    const shield = Number(data.shield);
+    state.shield = Number.isFinite(shield) ? shield : 0;
     state.sp = data.sp ?? 15;
     state.torchTurns = data.torchTurns ?? 8;
     state.weaponTier = data.weaponTier ?? 0;
@@ -255,7 +317,14 @@ export function loadGame() {
     state.completedQuests = new Set(Array.isArray(data.completedQuests) ? data.completedQuests : []);
     state.statBoosts = data.statBoosts || { str: 0, int: 0, fth: 0, wil: 0 };
     state.camp = data.camp || { hearth: 1, anvil: 1, totem: 1 };
+    state.dungeonFloors = sanitizeDungeonFloors(data.dungeonFloors);
     state.dungeon = data.dungeon || null;
+    // The saved current floor is authoritative and must alias the cache entry
+    // so later room clears update the same object ascend/descend will restore.
+    if (isDungeonFloor(state.dungeon)) {
+      state.dungeon.depth = Number(state.dungeon.depth);
+      state.dungeonFloors[dungeonFloorKey(state.dungeon.id, state.dungeon.depth)] = state.dungeon;
+    }
 
     // Reset transient UI/animation fields
     state.encounter = null;
