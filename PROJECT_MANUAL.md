@@ -275,7 +275,7 @@ For 3D:
 
 Refactors that are not an approved art pass still require preserving every coordinate, gradient, color, branch, formula, and call sequence. Drawing time must remain passed through as `t` and use the original animation formulas.
 
-An owner-approved art pull request may change pixels. The shipped picture stays a dithered glyph-pixel raster (Cousine glyphs in the low-resolution grid), not literal ASCII, unless the owner asks otherwise. Plate and cover strokes that are glyph-rasterized are kept at 2px or thicker. `drawWorldMap` is a chart, not a plate, and was left unchanged by the type pass so a parallel map cleanup can land cleanly. Post-ASCII overlay strokes (hotspot frames, the dungeon chart) are vector and are not part of that 2px floor. The forge patron wash center stop is alpha `0.30`. Vessel `clothDark`, `clothMid`, and `parchment` are lifted, when needed, until their luminance is at least `RAMP_SEPARATION` (two steps of the shortest ramp) above that wash.
+An owner-approved art pull request may change pixels. The shipped picture stays a dithered glyph-pixel raster (Cousine glyphs in the low-resolution grid), not literal ASCII, unless the owner asks otherwise. Plate, cover, and world-map strokes that are glyph-rasterized are kept at 2px or thicker. The map change is line width only: border, mountains, fen ripples, and pilgrim roads. Post-ASCII overlay strokes (hotspot frames, the dungeon chart) are vector and are not part of that 2px floor. The forge patron wash center stop is alpha `0.30`. Vessel `clothDark`, `clothMid`, and `parchment` are lifted, when needed, until their luminance is at least `RAMP_SEPARATION` (two steps of the shortest ramp) above that wash.
 
 ## 6. State and Progression
 
@@ -495,13 +495,14 @@ Because the project has no build configuration in the current repository, syntax
 - Bundled Cousine Regular, Bold, and Italic as WOFF2 under `fonts/` with `fonts/OFL.txt`. CSS and every canvas `font` use it. The animation loop starts after `document.fonts.ready`, capped at 2 seconds with `Promise.race`.
 - Shade ramps live in `src/typography.js`. Default is `" .:;*+=#%@"` ordered by mean alpha, not by an alpha>16 pixel count. The previous block string is the `blocks` preset. `█` is reserved for non-edge cells at source luminance `>= 0.97` on `density`, `punct`, and `blocks`. The cover mitre stroke is `#fbf8f3` so those tips still qualify. `?ramp=` and the `[` / `]` keys cycle `legacy`, `density`, `punct`, and `blocks`. Bracket keys do not capture focus inside an input or textarea.
 - Forge patron-glow center alpha is `0.30`. Vessel subject fills are lifted to stay at least two shortest-ramp steps above that glow.
-- Glyph-rasterized plate, portrait, cover, and vessel strokes below 2px are now 2px. `drawWorldMap` strokes were not edited.
+- Glyph-rasterized plate, portrait, cover, and vessel strokes below 2px are now 2px. World-map border, mountain, fen, and road strokes are 2px as well. Line widths only.
 - `#82d988` is now `#7da882`. The dungeon chart overlay is 10.5px. CSS type sizes are 10px, 11.5px, and 17px. Inventory item buttons inherit Cousine.
 
 ### 2026-11-25 — Ramp measurement correction
 
 - Replaced the default ramp with `" .:;*+=#%@"` after a mean-alpha remeasure (░ 0.143, ▒ 0.262, @ 0.287). The old string is `blocks`.
 - `HOTSPOT_LUM` returned to `0.97`. A gate of 0.92 spread `█` across lamps, windows, and map markers. The cover mitre stroke is `#fbf8f3` (luminance about 0.974) so the spike tips still draw `█`. Fonts are WOFF2 (Regular, Bold, Italic). Font load is raced against 2 seconds. `.inv-item` inherits the UI face. `[` / `]` ignore inputs and textareas.
+- World-map strokes at 1.3–1.6px (border, Osscrown hatching, fen ripples, pilgrim roads) are 2px. Coordinates and colors are unchanged.
 
 ### 2026-11-25
 

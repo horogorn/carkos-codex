@@ -58,7 +58,7 @@ export function drawWorldMap(ctx, w, h, t) {
 
   // Double border & compass rose
   ctx.strokeStyle = "#7a7065";
-  ctx.lineWidth = 1.4;
+  ctx.lineWidth = 2;
   ctx.strokeRect(4, 4, w - 8, h - 8);
   ctx.strokeRect(7, 7, w - 14, h - 14);
   const crX = w - 18;
@@ -72,7 +72,7 @@ export function drawWorldMap(ctx, w, h, t) {
 
   // Northern Osscrown hatched mountain range
   ctx.strokeStyle = "#a69a8b";
-  ctx.lineWidth = 1.6;
+  ctx.lineWidth = 2;
   for (let m = 0; m < 6; m++) {
     const mx = w * (0.28 + m * 0.085);
     const my = h * (0.16 + (m % 2) * 0.04);
@@ -89,7 +89,7 @@ export function drawWorldMap(ctx, w, h, t) {
 
   // Southwest Quicksilver Fen marsh ripples
   ctx.strokeStyle = "#749aa6";
-  ctx.lineWidth = 1.3;
+  ctx.lineWidth = 2;
   for (let wv = 0; wv < 5; wv++) {
     const wy = h * (0.64 + wv * 0.045);
     ctx.beginPath();
@@ -112,7 +112,7 @@ export function drawWorldMap(ctx, w, h, t) {
 
   // Dotted pilgrim roads
   ctx.strokeStyle = "#c4a874";
-  ctx.lineWidth = 1.4;
+  ctx.lineWidth = 2;
   ctx.setLineDash([2, 3]);
   ctx.beginPath();
   ctx.moveTo(w * 0.48, h * 0.28);
