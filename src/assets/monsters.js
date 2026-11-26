@@ -4,7 +4,7 @@ export function drawMonsterPlate(ctx, artId, t, godRgb) {
 
     // Bone-Sworn Colossus
     ctx.strokeStyle = "#cfc7ba";
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 2;
     [
       [-26, 4, -40, -18],
       [22, 2, 36, -20],
@@ -53,7 +53,7 @@ export function drawMonsterPlate(ctx, artId, t, godRgb) {
 
     // Mire-Leviathan
     ctx.strokeStyle = "#9ec4cf";
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 2;
     for (let r = 0; r < 4; r++) {
       const rad = 20 + r * 9 + Math.sin(t * 3 + r) * 2;
       ctx.beginPath();

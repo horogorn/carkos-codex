@@ -1,6 +1,6 @@
 # THE CARKOS CODEX — Project Manual
 
-Last updated: 2026-11-25
+Last updated: 2026-11-26
 Project version: v9.2 Modular Build
 
 This manual describes the current codebase and the rules for changing it. It is part of the project and MUST be updated for every project edit, including code, HTML, CSS, assets, dependencies, commands, and documentation.
@@ -32,6 +32,8 @@ THE CARKOS CODEX is a browser-only ES module game using:
 - `src/combat.js` for turn-based encounter logic and physical dice animation.
 - `src/art2d.js` for public 2D drawing APIs and retained portraits/maps/covers.
 - `src/assets/*.js` for extracted NPC, monster, item, and vessel drawings.
+- `src/typography.js` for the bundled Cousine canvas stack and the ASCII shade-ramp presets.
+- `fonts/` for the self-hosted Cousine faces and `fonts/OFL.txt`.
 
 There is currently no package manifest or build step. Run the project through a local HTTP server so ES modules and canvas/browser APIs are available.
 
@@ -56,6 +58,8 @@ Do not rename or remove DOM IDs used by `src/main.js` or `src/combat.js` without
 ### `style.css`
 
 Controls the terminal-grimoire layout, toolbar, panels, HUD, inventory, buttons, vertical/reel mode, CRT overlay, and encounter styles.
+
+The UI face is self-hosted Cousine (`fonts/`, SIL OFL in `fonts/OFL.txt`), declared with `@font-face` and used as `"Cousine", "Courier New", Courier, monospace`. CSS type sizes are 10px, 11.5px, and 17px. Toolbar buttons and the time pill use 10px so the longest phase name stays on one row; titles are 17px and reading text is 11.5px.
 
 Key rules:
 
@@ -136,7 +140,20 @@ The application owner. It:
 - Configures combat and dungeon callback hooks.
 - Checks for and restores saved games.
 
-The ASCII pipeline uses `COLS`, `ROWS`, `CELL_W`, `CELL_H`, and `RAMP`. The display canvas is separate from the low-resolution buffer and WebGL readback canvas.
+The ASCII pipeline uses `COLS`, `ROWS`, `CELL_W`, `CELL_H`, and the ramp presets in `src/typography.js`. The display canvas is separate from the low-resolution buffer and WebGL readback canvas. The first frame waits on `document.fonts.ready` and an explicit bold Cousine load, raced against a 2 second cap, before `renderPixelsToAscii` runs.
+
+Shade ramps, darkest to lightest. Coverage is mean alpha of Cousine Bold at 8px inside a 6×8 cell:
+
+- `density` (default): `" .:;*+=#%@"` (10 glyphs). Mean alpha rises from 0 through . 0.025, : 0.050, ; 0.075, * 0.094, + 0.141, = 0.154, # 0.208, % 0.258, @ 0.287.
+- `legacy`: the lettered ramp shipped before this pass, including its terminal `█`. No separate hotspot rule.
+- `punct`: `" .:~*=+#%@"`.
+- `blocks`: the first density string `" .·:;+#%@░▒"`. Mean alpha is not monotone: ░ is 0.143 and ▒ is 0.262, while @ is 0.287, so the block tiers flatten bright areas.
+
+On `density`, `punct`, and `blocks`, a non-edge cell draws `█` only when source luminance is at least `0.97`. The cover mitre stroke is `#fbf8f3` (about 0.974) so its tips still clear that gate. `]` and `[` cycle the four presets unless the event target is an `input` or `textarea`. `?ramp=legacy|density|punct|blocks` (or `0|1|2|3`) selects one. A `RAMP <id>` label is drawn only after the query param or a cycle key is used. Sobel edges and the 4×4 Bayer matrix are unchanged.
+
+### `src/typography.js`
+
+Leaf module. Exports `FONT_STACK`, `canvasFont`, the four ramp presets (`legacy`, `density`, `punct`, `blocks`), `DEFAULT_RAMP_ID`, `HOTSPOT_LUM` (`0.97`), and `RAMP_SEPARATION` (`0.2`, two steps of the 10-glyph ramps). It does not import.
 
 ### `src/shaders.js`
 
@@ -209,10 +226,14 @@ index.html
   -> src/main.js
        -> src/lore.js
        -> src/state.js -> src/lore.js
+       -> src/typography.js
        -> src/shaders.js -> src/lore.js, src/state.js
-       -> src/art2d.js -> src/lore.js, src/state.js, src/assets/*.js
-       -> src/dungeon.js -> src/state.js
-       -> src/combat.js -> src/lore.js, src/state.js
+       -> src/art2d.js -> src/lore.js, src/state.js, src/typography.js, src/assets/*.js
+       -> src/dungeon.js -> src/state.js, src/typography.js
+       -> src/combat.js -> src/lore.js, src/state.js, src/typography.js
+
+src/typography.js
+  -> no imports
 
 src/assets/*.js
   -> no imports; receive lore-derived values and state-derived values as arguments
@@ -261,7 +282,9 @@ For 3D:
 - camp -> environment `4` or `5`
 - encounter -> environment `6`
 
-Zero-pixel-change artwork refactors require preserving every coordinate, gradient, color, branch, formula, and call sequence. Drawing time must remain passed through as `t` and use the original animation formulas.
+Refactors that are not an approved art pass still require preserving every coordinate, gradient, color, branch, formula, and call sequence. Drawing time must remain passed through as `t` and use the original animation formulas.
+
+An owner-approved art pull request may change pixels. The shipped picture stays a dithered glyph-pixel raster (Cousine glyphs in the low-resolution grid), not literal ASCII, unless the owner asks otherwise. Plate, cover, and world-map strokes that are glyph-rasterized are kept at 2px or thicker. The map change is line width only: border, mountains, fen ripples, and pilgrim roads. Post-ASCII overlay strokes (hotspot frames, the dungeon chart) are vector and are not part of that 2px floor. The forge patron wash center stop is alpha `0.30`. Vessel `clothDark`, `clothMid`, and `parchment` are lifted, when needed, until their luminance is at least `RAMP_SEPARATION` (two steps of the shortest ramp) above that wash.
 
 ## 6. State and Progression
 
@@ -450,7 +473,7 @@ Update `ENEMY_TEMPLATES`, combat prop mappings, WebGL monster rendering if neede
 
 ### Changing visual output
 
-Preserve coordinates/colors/formulas unless the change explicitly requests visual alteration. For 2D refactors, retain the public API and original context state/transform/restoration behavior.
+Preserve coordinates, colors, and formulas unless the owner has approved that art pass or the task explicitly requests a visual change. Approved art passes keep the dithered glyph-pixel look. For 2D refactors, retain the public API and original context state, transform, and restoration behavior. New UI greens for heal/ok text use `#7da882` (replacing `#82d988`). Canvas overlay text is at least 10.5px.
 
 ## 14. Frozen/Protected Files
 
@@ -494,12 +517,31 @@ Because the project has no build configuration in the current repository, syntax
 
 ## 16. Change Log
 
+### 2026-11-26 — Merge art pass with v9.2 continuity
+
+- Merged `origin/main` (the approved art pass) into the continuity branch. Cousine, the typography ramps, `HOTSPOT_LUM` 0.97, 2px glyph and world-map strokes, `#7da882`, and the floor cache, shield persistence, peddler chart position, and v9.2 labels all remain.
+
 ### 2026-11-25 — v9.2 continuity
 
 - Aligned the visible version with the V9.2 source revision. The `index.html` document title and toolbar wordmark, and this manual, now read v9.2. An inline empty icon in `index.html` stops the browser from requesting a missing `favicon.ico`.
 - `saveGame` / `loadGame` persist `state.shield` on the existing `carkos_codex_save_v9` key. Older saves that omit `shield` load with shield `0`.
 - Moved the Masked Peddler's roaming chart position from `MAP_LOCATIONS` onto `state.peddlerPos`. Catalog coordinates stay fixed. Markers, labels, and hotspots share `mapLocationPosition`, using the same `0.58 + sin(t * 0.4) * 0.06` / `0.69 + cos(t * 0.4) * 0.03` formula as before. The position is not saved.
 - Added a dungeon floor cache keyed by dungeon id and depth. Ascending restores the previous floor and arrives on its descending stairs. Descending into an already visited deeper floor restores that floor and arrives on its entrance stairs. Visited floors persist in the save for the active delve and stay backward compatible when the field is missing. Surface exit and a new map expedition still discard that dungeon's cache so re-entry generates a fresh floor. `buildDungeonFloor(dungeonId, depth, floorSeed)` is the seam for a later pure seeded generator.
+
+### 2026-11-25 — Approved art pass (dithered glyph-pixel)
+
+- Owner approval for this pass overrides the zero-pixel default. The picture stays dithered Cousine glyphs, not literal ASCII.
+- Bundled Cousine Regular, Bold, and Italic as WOFF2 under `fonts/` with `fonts/OFL.txt`. CSS and every canvas `font` use it. The animation loop starts after `document.fonts.ready`, capped at 2 seconds with `Promise.race`.
+- Shade ramps live in `src/typography.js`. Default is `" .:;*+=#%@"` ordered by mean alpha, not by an alpha>16 pixel count. The previous block string is the `blocks` preset. `█` is reserved for non-edge cells at source luminance `>= 0.97` on `density`, `punct`, and `blocks`. The cover mitre stroke is `#fbf8f3` so those tips still qualify. `?ramp=` and the `[` / `]` keys cycle `legacy`, `density`, `punct`, and `blocks`. Bracket keys do not capture focus inside an input or textarea.
+- Forge patron-glow center alpha is `0.30`. Vessel subject fills are lifted to stay at least two shortest-ramp steps above that glow.
+- Glyph-rasterized plate, portrait, cover, and vessel strokes below 2px are now 2px. World-map border, mountain, fen, and road strokes are 2px as well. Line widths only.
+- `#82d988` is now `#7da882`. The dungeon chart overlay is 10.5px. CSS type sizes are 10px, 11.5px, and 17px. Inventory item buttons inherit Cousine.
+
+### 2026-11-25 — Ramp measurement correction
+
+- Replaced the default ramp with `" .:;*+=#%@"` after a mean-alpha remeasure (░ 0.143, ▒ 0.262, @ 0.287). The old string is `blocks`.
+- `HOTSPOT_LUM` returned to `0.97`. A gate of 0.92 spread `█` across lamps, windows, and map markers. The cover mitre stroke is `#fbf8f3` (luminance about 0.974) so the spike tips still draw `█`. Fonts are WOFF2 (Regular, Bold, Italic). Font load is raced against 2 seconds. `.inv-item` inherits the UI face. `[` / `]` ignore inputs and textareas.
+- World-map strokes at 1.3–1.6px (border, Osscrown hatching, fen ripples, pilgrim roads) are 2px. Coordinates and colors are unchanged.
 
 ### 2026-11-25
 

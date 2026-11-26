@@ -198,7 +198,7 @@ export function grantXP(amount) {
     state.maxHp += 3;
     state.hp = state.maxHp;
     state.pendingLevelUps++;
-    spawnFloatText(0.5, 0.35, `LEVEL UP! (LVL ${state.level})`, "#82d988");
+    spawnFloatText(0.5, 0.35, `LEVEL UP! (LVL ${state.level})`, "#7da882");
   }
 }
 
