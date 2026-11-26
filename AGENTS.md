@@ -10,3 +10,4 @@ For every edit to code, HTML, CSS, assets, dependencies, commands, or documentat
 4. Avoid circular imports.
 5. Run focused syntax and browser verification.
 6. Update [PROJECT_MANUAL.md](./PROJECT_MANUAL.md), including its date and change log, in the same edit.
+7. Pixel changes need the owner's approval for that pull request. The default is still to preserve coordinates, colors, and formulas. An approved art pass may change pixels and must keep the dithered glyph-pixel raster unless the owner asks for literal ASCII.

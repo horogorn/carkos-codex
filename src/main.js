@@ -65,6 +65,13 @@ import {
   handleCombatAction
 } from "./combat.js";
 
+import {
+  canvasFont,
+  DEFAULT_RAMP_ID,
+  HOTSPOT_LUM,
+  RAMP_PRESETS
+} from "./typography.js";
+
 // ============================================================================
 // 1. Canvas Setup & Sobel + Bayer 4x4 ASCII Rasterizer
 // ============================================================================
@@ -90,7 +97,6 @@ let ROWS = 80;
 const CELL_W = 6;
 const CELL_H = 8;
 
-const RAMP = " .·,:;░▒+itIYVXRBM#%@█";
 const BAYER4 = [
   [0, 8, 2, 10],
   [12, 4, 14, 6],
@@ -99,6 +105,33 @@ const BAYER4 = [
 ];
 
 let lumGrid = new Float32Array(COLS * ROWS);
+
+const DEFAULT_RAMP_INDEX = Math.max(0, RAMP_PRESETS.findIndex((preset) => preset.id === DEFAULT_RAMP_ID));
+
+function rampIndexFromQuery() {
+  const id = new URLSearchParams(location.search).get("ramp");
+  if (id == null || id === "") return DEFAULT_RAMP_INDEX;
+  const byName = RAMP_PRESETS.findIndex((preset) => preset.id === id);
+  if (byName >= 0) return byName;
+  const asNumber = Number(id);
+  if (Number.isInteger(asNumber) && asNumber >= 0 && asNumber < RAMP_PRESETS.length) return asNumber;
+  return DEFAULT_RAMP_INDEX;
+}
+
+let rampIndex = rampIndexFromQuery();
+let showRampLabel = new URLSearchParams(location.search).has("ramp");
+
+function activeRamp() {
+  return RAMP_PRESETS[rampIndex];
+}
+
+function setRampIndex(next) {
+  rampIndex = (next + RAMP_PRESETS.length) % RAMP_PRESETS.length;
+  showRampLabel = true;
+  const url = new URL(location.href);
+  url.searchParams.set("ramp", RAMP_PRESETS[rampIndex].id);
+  history.replaceState(null, "", url);
+}
 
 function configureDimensions() {
   COLS = state.verticalMode ? 76 : 132;
@@ -130,7 +163,7 @@ function renderPixelsToAscii(pixels, srcW, srcH, flipY, dstCtx, cellW, cellH, tr
     dstCtx.fillRect(0, 0, srcW * cellW, srcH * cellH);
   }
 
-  dstCtx.font = `bold ${cellH}px "Courier New", Courier, monospace`;
+  dstCtx.font = canvasFont(cellH);
   dstCtx.textBaseline = "top";
 
   for (let y = 0; y < srcH; y++) {
@@ -167,8 +200,13 @@ function renderPixelsToAscii(pixels, srcW, srcH, flipY, dstCtx, cellW, cellH, tr
       }
 
       if (!isEdge) {
-        const dLum = Math.max(0, Math.min(1, lum + (BAYER4[y & 3][x & 3] / 16 - 0.5) * 0.14));
-        ch = RAMP[Math.min(RAMP.length - 1, Math.floor(dLum * RAMP.length))];
+        const ramp = activeRamp();
+        if (ramp.hotspot && lum >= HOTSPOT_LUM) {
+          ch = "█";
+        } else {
+          const dLum = Math.max(0, Math.min(1, lum + (BAYER4[y & 3][x & 3] / 16 - 0.5) * 0.14));
+          ch = ramp.glyphs[Math.min(ramp.glyphs.length - 1, Math.floor(dLum * ramp.glyphs.length))];
+        }
       }
       if (ch === " ") continue;
 
@@ -250,7 +288,7 @@ function drawCanvasOverlays() {
     MAP_LOCATIONS.forEach((loc) => {
       const px = loc.x * mainCanvas.width;
       const py = loc.y * mainCanvas.height;
-      mCtx.font = 'bold 10.5px "Courier New", Courier, monospace';
+      mCtx.font = canvasFont(10.5);
       mCtx.textBaseline = "top";
       const tw = mCtx.measureText(loc.name).width;
       mCtx.fillStyle = "rgba(5, 4, 4, 0.88)";
@@ -276,7 +314,7 @@ function drawCanvasOverlays() {
     const box = hs.id.startsWith("dng-move-") ? 12 : 24;
     mCtx.strokeRect(px - box, py - box, box * 2, box * 2);
 
-    mCtx.font = 'bold 11px "Courier New", Courier, monospace';
+    mCtx.font = canvasFont(11);
     mCtx.textBaseline = "top";
     const tw = mCtx.measureText(hs.label).width;
     const lx = Math.max(8, Math.min(mainCanvas.width - tw - 16, px - tw / 2));
@@ -295,7 +333,7 @@ function drawCanvasOverlays() {
       floatingTexts.splice(i, 1);
       continue;
     }
-    mCtx.font = 'bold 12px "Courier New", Courier, monospace';
+    mCtx.font = canvasFont(12);
     mCtx.textBaseline = "top";
     mCtx.fillStyle = ft.color;
     mCtx.globalAlpha = Math.min(1, ft.life * 1.4);
@@ -304,6 +342,18 @@ function drawCanvasOverlays() {
   }
 
   updateAndDrawPhysicalDice(mCtx, mainCanvas.width, mainCanvas.height);
+
+  if (showRampLabel) {
+    const label = `RAMP ${activeRamp().id}`;
+    mCtx.font = canvasFont(10.5);
+    mCtx.textBaseline = "bottom";
+    mCtx.textAlign = "left";
+    const tw = mCtx.measureText(label).width;
+    mCtx.fillStyle = "rgba(5, 4, 4, 0.92)";
+    mCtx.fillRect(8, mainCanvas.height - 28, tw + 12, 18);
+    mCtx.fillStyle = "#e3dccf";
+    mCtx.fillText(label, 14, mainCanvas.height - 12);
+  }
 }
 
 // ============================================================================
@@ -519,7 +569,7 @@ function usePackItem(name) {
   if (name === "Tallow Ration") {
     removeItem(name, 1);
     state.hp = Math.min(state.maxHp, state.hp + 5);
-    spawnFloatText(0.5, 0.5, "+5 VITALITY", "#82d988");
+    spawnFloatText(0.5, 0.5, "+5 VITALITY", "#7da882");
   } else if (name === "Pitch Torch") {
     removeItem(name, 1);
     state.torchTurns = 8;
@@ -527,7 +577,7 @@ function usePackItem(name) {
   } else if (name === "Night-Watch Moss") {
     removeItem(name, 1);
     state.curses.delete("drift");
-    spawnFloatText(0.5, 0.5, "DRIFT-SICKNESS CLEANSED", "#82d988");
+    spawnFloatText(0.5, 0.5, "DRIFT-SICKNESS CLEANSED", "#7da882");
   } else if (name === "Censer of Ways" || name === "Hollow Reed-Bone") {
     if (state.screen === "dungeon" && state.dungeon) {
       if (revealSecretInCurrentRoom()) {
@@ -894,7 +944,7 @@ function handleAction(action) {
       state.curses.clear();
       updateHUD();
       saveGame();
-      spawnFloatText(0.5, 0.5, "FLESH CLEANSED", "#82d988");
+      spawnFloatText(0.5, 0.5, "FLESH CLEANSED", "#7da882");
     }
     handleAction("town-shrine");
   } else if (action === "shrine-lore") {
@@ -927,7 +977,7 @@ function handleAction(action) {
       addItem("Tallow Ration", 2);
       updateHUD();
       saveGame();
-      spawnFloatText(0.5, 0.5, `+2 RATIONS (x${getItemQty("Tallow Ration")})`, "#82d988");
+      spawnFloatText(0.5, 0.5, `+2 RATIONS (x${getItemQty("Tallow Ration")})`, "#7da882");
       if (state.viewArtId === "peddler") openPeddlerShop();
       else handleAction("town-smith");
     }
@@ -937,7 +987,7 @@ function handleAction(action) {
       addItem("Night-Watch Moss", 1);
       updateHUD();
       saveGame();
-      spawnFloatText(0.5, 0.5, `+1 MOSS (x${getItemQty("Night-Watch Moss")})`, "#82d988");
+      spawnFloatText(0.5, 0.5, `+1 MOSS (x${getItemQty("Night-Watch Moss")})`, "#7da882");
       if (state.viewArtId === "peddler") openPeddlerShop();
     }
   } else if (action === "sell-relics") {
@@ -1032,7 +1082,7 @@ function handleAction(action) {
       state.camp[part]++;
       updateHUD();
       saveGame();
-      spawnFloatText(0.5, 0.45, `${part.toUpperCase()} LVL ${state.camp[part]}!`, "#82d988");
+      spawnFloatText(0.5, 0.45, `${part.toUpperCase()} LVL ${state.camp[part]}!`, "#7da882");
     }
     handleAction("camp-upgrades");
   } else if (action === "camp-ritual") {
@@ -1435,4 +1485,24 @@ if (hasSavedGame()) {
 }
 
 configureDimensions();
-loop();
+
+window.addEventListener("keydown", (event) => {
+  if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (event.key !== "]" && event.key !== "[") return;
+  const tag = event.target instanceof Element ? event.target.tagName : "";
+  if (tag === "INPUT" || tag === "TEXTAREA") return;
+  event.preventDefault();
+  setRampIndex(rampIndex + (event.key === "]" ? 1 : -1));
+});
+
+function bootRaster() {
+  const sizes = [3, 8, 10.5, 11, 12, 16];
+  const loads = sizes.map((px) => document.fonts.load(canvasFont(px)));
+  const fontsReady = Promise.all([document.fonts.ready, ...loads]).catch(() => {});
+  const cap = new Promise((resolve) => setTimeout(resolve, 2000));
+  Promise.race([fontsReady, cap]).then(() => {
+    loop();
+  });
+}
+
+bootRaster();

@@ -1,10 +1,11 @@
 // ============================================================================
 // THE CARKOS CODEX — 2D Procedural Woodcut Art, Portraits & World Map
-// Imports ONLY from ./lore.js and ./state.js plus the explicit asset modules.
+// Imports from ./lore.js, ./state.js, ./typography.js, and the asset modules.
 // ============================================================================
 
 import { CLASSES, MAP_LOCATIONS, PANTHEON } from "./lore.js";
 import { state } from "./state.js";
+import { RAMP_SEPARATION } from "./typography.js";
 import { drawNpcPlate } from "./assets/npcs.js";
 import { drawMonsterPlate } from "./assets/monsters.js";
 import { drawItemPlate } from "./assets/items.js";
@@ -57,7 +58,7 @@ export function drawWorldMap(ctx, w, h, t) {
 
   // Double border & compass rose
   ctx.strokeStyle = "#7a7065";
-  ctx.lineWidth = 1.4;
+  ctx.lineWidth = 2;
   ctx.strokeRect(4, 4, w - 8, h - 8);
   ctx.strokeRect(7, 7, w - 14, h - 14);
   const crX = w - 18;
@@ -71,7 +72,7 @@ export function drawWorldMap(ctx, w, h, t) {
 
   // Northern Osscrown hatched mountain range
   ctx.strokeStyle = "#a69a8b";
-  ctx.lineWidth = 1.6;
+  ctx.lineWidth = 2;
   for (let m = 0; m < 6; m++) {
     const mx = w * (0.28 + m * 0.085);
     const my = h * (0.16 + (m % 2) * 0.04);
@@ -88,7 +89,7 @@ export function drawWorldMap(ctx, w, h, t) {
 
   // Southwest Quicksilver Fen marsh ripples
   ctx.strokeStyle = "#749aa6";
-  ctx.lineWidth = 1.3;
+  ctx.lineWidth = 2;
   for (let wv = 0; wv < 5; wv++) {
     const wy = h * (0.64 + wv * 0.045);
     ctx.beginPath();
@@ -111,7 +112,7 @@ export function drawWorldMap(ctx, w, h, t) {
 
   // Dotted pilgrim roads
   ctx.strokeStyle = "#c4a874";
-  ctx.lineWidth = 1.4;
+  ctx.lineWidth = 2;
   ctx.setLineDash([2, 3]);
   ctx.beginPath();
   ctx.moveTo(w * 0.48, h * 0.28);
@@ -245,7 +246,7 @@ export function drawExpressivePortrait(ctx, w, h, t) {
     ctx.fill();
 
     ctx.strokeStyle = "#171412";
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 2;
     const tiltDir = idx === 0 ? p.browAngle : -p.browAngle;
     ctx.beginPath();
     ctx.moveTo(ex - eyeR * 1.4, p.eyeY - eyeR * 1.2 - tiltDir * 2);
@@ -254,7 +255,7 @@ export function drawExpressivePortrait(ctx, w, h, t) {
 
     if (curses.has("drift")) {
       ctx.strokeStyle = "#c8d6de";
-      ctx.lineWidth = 1.0;
+      ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(ex - eyeR, p.eyeY + 0.5);
       ctx.quadraticCurveTo(ex, p.eyeY + 2.0, ex + eyeR, p.eyeY + 0.5);
@@ -270,7 +271,7 @@ export function drawExpressivePortrait(ctx, w, h, t) {
   // Nose bridge
   const nx = p.poseOffset * 0.55 + p.noseOffset * 0.3;
   ctx.strokeStyle = "#141210";
-  ctx.lineWidth = 1.4;
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(nx, p.eyeY + 0.5);
   ctx.lineTo(nx - 1.3, p.eyeY + p.noseLen);
@@ -287,7 +288,7 @@ export function drawExpressivePortrait(ctx, w, h, t) {
     ctx.fill();
   } else {
     ctx.strokeStyle = "#141210";
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(mx - p.mouthW, mouthY);
     ctx.quadraticCurveTo(mx, mouthY + p.mouthSkew, mx + p.mouthW, mouthY - 0.4);
@@ -296,7 +297,7 @@ export function drawExpressivePortrait(ctx, w, h, t) {
 
   if (p.beardStyle > 0) {
     ctx.strokeStyle = "#2e2924";
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 2;
     const strands = p.beardStyle === 2 ? 7 : 3;
     for (let b = -strands; b <= strands; b += 2) {
       ctx.beginPath();
@@ -308,7 +309,7 @@ export function drawExpressivePortrait(ctx, w, h, t) {
 
   if (p.hairStyle > 0) {
     ctx.strokeStyle = "#332d28";
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 2;
     for (let hIdx = -3; hIdx <= 3; hIdx++) {
       ctx.beginPath();
       ctx.moveTo(hIdx * 3.2, -p.headH * 0.8);
@@ -319,7 +320,7 @@ export function drawExpressivePortrait(ctx, w, h, t) {
 
   if (state.omenKey === "oathbreaker" || p.scarType === 1) {
     ctx.strokeStyle = "#4a1c19";
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-p.eyeSep - 2, p.eyeY + 2);
     ctx.lineTo(-p.eyeSep + 1, mouthY + 1);
@@ -330,7 +331,7 @@ export function drawExpressivePortrait(ctx, w, h, t) {
   const gear = CLASSES[state.clsKey].gear;
   if (gear === "cage_helm") {
     ctx.strokeStyle = "#968c7e";
-    ctx.lineWidth = 1.1;
+    ctx.lineWidth = 2;
     for (let bx = -8; bx <= 8; bx += 4) {
       ctx.beginPath();
       ctx.moveTo(bx, -p.headH);
@@ -346,7 +347,7 @@ export function drawExpressivePortrait(ctx, w, h, t) {
     ctx.fill();
   } else if (gear === "bandages") {
     ctx.strokeStyle = "#dfd5c7";
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-p.headW, -10);
     ctx.lineTo(p.headW, -5);
@@ -366,7 +367,7 @@ export function drawExpressivePortrait(ctx, w, h, t) {
     ctx.fillRect(-p.headW, p.eyeY - 2.5, p.headW * 2, 4.5);
   } else if (gear === "bark_crown") {
     ctx.strokeStyle = "#6d9971";
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     [-7, -2, 2, 7].forEach((tx, i) => {
       ctx.beginPath();
       ctx.moveTo(tx, -p.headH + 2);
@@ -387,7 +388,7 @@ export function drawExpressivePortrait(ctx, w, h, t) {
 
   if (curses.has("brand") || state.omenKey === "heretic") {
     ctx.strokeStyle = "#ff3b30";
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, -p.headH * 0.7);
     ctx.lineTo(0, -p.headH * 0.25);
@@ -427,9 +428,9 @@ export function drawCoverArt(ctx, w, h, t) {
   ctx.closePath();
   ctx.fill();
 
-  // Animated sun-mitre crown spikes
-  ctx.strokeStyle = "#f2eadc";
-  ctx.lineWidth = 1.8;
+  // #fbf8f3 is source luminance ~0.974, so non-edge tips clear the 0.97 hotspot gate.
+  ctx.strokeStyle = "#fbf8f3";
+  ctx.lineWidth = 2;
   for (let a = -2.4; a <= -0.7; a += 0.28) {
     ctx.beginPath();
     ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
@@ -448,6 +449,29 @@ export function drawCoverArt(ctx, w, h, t) {
 // 5. Full-Body Grimdark Woodcut Vessel Plate (Flesh-Forge & Pack Effigy)
 // ============================================================================
 
+function luminanceOf(r, g, b) {
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
+function compositedGlowLum(r, g, b, alpha) {
+  return luminanceOf(
+    r * alpha + 4 * (1 - alpha),
+    g * alpha + 3 * (1 - alpha),
+    b * alpha + 3 * (1 - alpha)
+  );
+}
+
+function liftToLum(r, g, b, target) {
+  const lum = luminanceOf(r, g, b);
+  if (lum >= target - 1e-4) return [r, g, b];
+  const t = Math.min(1, (target - lum) / Math.max(1e-4, 1 - lum));
+  return [r, g, b].map((c) => Math.round(c + (255 - c) * t));
+}
+
+function rgbCss(channels) {
+  return `rgb(${channels[0]}, ${channels[1]}, ${channels[2]})`;
+}
+
 export function drawFullBodyVessel(ctx, w, h, t) {
   const isVert = h > w;
   const clsKey = state.clsKey || "penitent";
@@ -457,9 +481,32 @@ export function drawFullBodyVessel(ctx, w, h, t) {
   const breathe = Math.sin(t * 1.65) * 0.85;
   const sway = Math.sin(t * 1.1) * 1.2;
 
-  const clothDark = `rgb(${Math.floor(18 + gr * 0.16)}, ${Math.floor(15 + gg * 0.16)}, ${Math.floor(15 + gb * 0.16)})`;
-  const clothMid  = `rgb(${Math.floor(54 + gr * 0.26)}, ${Math.floor(48 + gg * 0.26)}, ${Math.floor(44 + gb * 0.26)})`;
-  const parchment = `rgb(${Math.floor(188 + gr * 0.22)}, ${Math.floor(178 + gg * 0.20)}, ${Math.floor(156 + gb * 0.18)})`;
+  // Brightest patron wash (center stop, alpha 0.30, over #040303). Subject
+  // fills are lifted until they sit at least two ramp steps above it, so the
+  // silhouette survives wherever the pointer parks the glow.
+  const halo = compositedGlowLum(gr, gg, gb, 0.30);
+  const clothFloor = halo + RAMP_SEPARATION;
+  const clothDarkRgb = liftToLum(
+    Math.floor(18 + gr * 0.16),
+    Math.floor(15 + gg * 0.16),
+    Math.floor(15 + gb * 0.16),
+    clothFloor
+  );
+  const clothMidRgb = liftToLum(
+    Math.floor(54 + gr * 0.26),
+    Math.floor(48 + gg * 0.26),
+    Math.floor(44 + gb * 0.26),
+    Math.max(clothFloor, luminanceOf(...clothDarkRgb) + RAMP_SEPARATION / 2)
+  );
+  const parchmentRgb = liftToLum(
+    Math.floor(188 + gr * 0.22),
+    Math.floor(178 + gg * 0.20),
+    Math.floor(156 + gb * 0.18),
+    clothFloor
+  );
+  const clothDark = rgbCss(clothDarkRgb);
+  const clothMid = rgbCss(clothMidRgb);
+  const parchment = rgbCss(parchmentRgb);
   const godGlow   = `rgb(${Math.min(255, gr + 35)}, ${Math.min(255, gg + 35)}, ${Math.min(255, gb + 35)})`;
 
   // 1. Deep Risograph Pantheon Backdrop
@@ -469,7 +516,7 @@ export function drawFullBodyVessel(ctx, w, h, t) {
   const lx = state.pointerX * w;
   const ly = state.pointerY * h;
   const bgGrad = ctx.createRadialGradient(lx, ly, 4, w * 0.56, h * 0.48, Math.max(w, h) * 0.65);
-  bgGrad.addColorStop(0, `rgba(${gr}, ${gg}, ${gb}, 0.56)`);
+  bgGrad.addColorStop(0, `rgba(${gr}, ${gg}, ${gb}, 0.30)`);
   bgGrad.addColorStop(0.55, `rgba(${Math.floor(gr * 0.42)}, ${Math.floor(gg * 0.36)}, ${Math.floor(gb * 0.36)}, 0.32)`);
   bgGrad.addColorStop(1, "rgba(4, 3, 3, 0.96)");
   ctx.fillStyle = bgGrad;
@@ -480,7 +527,7 @@ export function drawFullBodyVessel(ctx, w, h, t) {
   ctx.fillStyle = "rgba(6, 5, 5, 0.85)";
   ctx.fillRect(0, groundY, w, h - groundY);
   ctx.strokeStyle = `rgba(${Math.floor(120 + gr * 0.3)}, ${Math.floor(110 + gg * 0.3)}, ${Math.floor(98 + gb * 0.3)}, 0.55)`;
-  ctx.lineWidth = 1.0;
+  ctx.lineWidth = 2;
   for (let gx = 4; gx < w; gx += 4) {
     const hLen = 1.5 + ((gx * 17) % 5);
     ctx.beginPath();
@@ -518,7 +565,7 @@ export function drawFullBodyVessel(ctx, w, h, t) {
   ctx.fillStyle = "#040303";
   ctx.fillRect(fx - 2, fy - 2, fw + 4, fh + 4);
   ctx.strokeStyle = "#e3dccf";
-  ctx.lineWidth = 1.4;
+  ctx.lineWidth = 2;
   ctx.strokeRect(fx - 1.5, fy - 1.5, fw + 3, fh + 3);
 
   ctx.fillStyle = "#f2eadc";

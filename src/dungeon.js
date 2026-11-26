@@ -1,8 +1,9 @@
 // ============================================================================
 // THE CARKOS CODEX — Procedural Multi-Level Dungeons, Minimap & Room Events
-// Imports ONLY from ./state.js to keep a strict one-way dependency graph.
+// Imports from ./state.js and the typography leaf.
 // ============================================================================
 
+import { canvasFont } from "./typography.js";
 import {
   state,
   addItem,
@@ -394,7 +395,7 @@ export function drawDungeonMinimapHUD(ctx, canvasWidth) {
   ctx.lineWidth = 1.4;
   ctx.strokeRect(bx, by, boxW, boxH);
 
-  ctx.font = 'bold 9.5px "Courier New", Courier, monospace';
+  ctx.font = canvasFont(10.5);
   ctx.fillStyle = "#b59b6d";
   ctx.textBaseline = "top";
   ctx.fillText(`DEPTH ${dng.depth} CHART`, bx + 8, by + 12);
@@ -612,7 +613,7 @@ export function handleDungeonAction(action) {
     if (correct) {
       state.sp += 22;
       grantXP(50);
-      spawnFloatText(0.5, 0.45, "RIDDLE SOLVED! +50 XP", "#82d988");
+      spawnFloatText(0.5, 0.45, "RIDDLE SOLVED! +50 XP", "#7da882");
       hooks.setDialogue(
         "The Keeper Nods",
         "Judgment Accepted",
