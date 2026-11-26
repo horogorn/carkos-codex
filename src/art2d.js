@@ -469,18 +469,17 @@ function rgbCss(channels) {
   return `rgb(${channels[0]}, ${channels[1]}, ${channels[2]})`;
 }
 
-export function drawFullBodyVessel(ctx, w, h, t) {
-  const isVert = h > w;
-  const clsKey = state.clsKey || "penitent";
-  const god = PANTHEON[state.godKey] || PANTHEON.veneratus;
+/**
+ * The only vessel cloth palette. Forge plates and the 2.5D compositor both
+ * call this so patron colours are not re-derived.
+ *
+ * Brightest patron wash (center stop, alpha 0.30, over #040303). Subject
+ * fills are lifted until they sit at least two ramp steps above it, so the
+ * silhouette survives wherever the pointer parks the glow.
+ */
+export function vesselPalette(godKey) {
+  const god = PANTHEON[godKey] || PANTHEON.veneratus;
   const [gr, gg, gb] = god.rgb.map((v) => Math.floor(v * 255));
-  const wpnTier = state.weaponTier || 0;
-  const breathe = Math.sin(t * 1.65) * 0.85;
-  const sway = Math.sin(t * 1.1) * 1.2;
-
-  // Brightest patron wash (center stop, alpha 0.30, over #040303). Subject
-  // fills are lifted until they sit at least two ramp steps above it, so the
-  // silhouette survives wherever the pointer parks the glow.
   const halo = compositedGlowLum(gr, gg, gb, 0.30);
   const clothFloor = halo + RAMP_SEPARATION;
   const clothDarkRgb = liftToLum(
@@ -501,10 +500,24 @@ export function drawFullBodyVessel(ctx, w, h, t) {
     Math.floor(156 + gb * 0.18),
     clothFloor
   );
-  const clothDark = rgbCss(clothDarkRgb);
-  const clothMid = rgbCss(clothMidRgb);
-  const parchment = rgbCss(parchmentRgb);
-  const godGlow   = `rgb(${Math.min(255, gr + 35)}, ${Math.min(255, gg + 35)}, ${Math.min(255, gb + 35)})`;
+  return {
+    clothDark: rgbCss(clothDarkRgb),
+    clothMid: rgbCss(clothMidRgb),
+    parchment: rgbCss(parchmentRgb),
+    godGlow: `rgb(${Math.min(255, gr + 35)}, ${Math.min(255, gg + 35)}, ${Math.min(255, gb + 35)})`,
+    gr,
+    gg,
+    gb
+  };
+}
+
+export function drawFullBodyVessel(ctx, w, h, t) {
+  const isVert = h > w;
+  const clsKey = state.clsKey || "penitent";
+  const { clothDark, clothMid, parchment, godGlow, gr, gg, gb } = vesselPalette(state.godKey);
+  const wpnTier = state.weaponTier || 0;
+  const breathe = Math.sin(t * 1.65) * 0.85;
+  const sway = Math.sin(t * 1.1) * 1.2;
 
   // 1. Deep Risograph Pantheon Backdrop
   ctx.fillStyle = "#040303";

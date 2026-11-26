@@ -33,9 +33,16 @@ import {
 
 import {
   resizeWebGL,
-  renderWebGLFrame,
-  getLastWebGLPixels
+  renderWebGLFrame
 } from "./shaders.js";
+
+import {
+  blitWebGLTo2D,
+  composite25DEntities,
+  fenPlateFractions,
+  referenceEntityZ,
+  setHitFlashHold
+} from "./compositor25d.js";
 
 import {
   drawDetailedArtwork,
@@ -166,6 +173,7 @@ function renderPixelsToAscii(pixels, srcW, srcH, flipY, dstCtx, cellW, cellH, tr
 
   dstCtx.font = canvasFont(cellH);
   dstCtx.textBaseline = "top";
+  let blockCount = 0;
 
   for (let y = 0; y < srcH; y++) {
     const sy = flipY ? srcH - 1 - y : y;
@@ -204,6 +212,7 @@ function renderPixelsToAscii(pixels, srcW, srcH, flipY, dstCtx, cellW, cellH, tr
         const ramp = activeRamp();
         if (ramp.hotspot && lum >= HOTSPOT_LUM) {
           ch = "█";
+          blockCount += 1;
         } else {
           const dLum = Math.max(0, Math.min(1, lum + (BAYER4[y & 3][x & 3] / 16 - 0.5) * 0.14));
           ch = ramp.glyphs[Math.min(ramp.glyphs.length - 1, Math.floor(dLum * ramp.glyphs.length))];
@@ -221,11 +230,24 @@ function renderPixelsToAscii(pixels, srcW, srcH, flipY, dstCtx, cellW, cellH, tr
       dstCtx.fillText(ch, x * cellW, y * cellH);
     }
   }
+  if (shotStill && dstCtx === mCtx) window.__carkosBlocks = blockCount;
 }
 
 function renderWebGL3D(envCode, propType, propState) {
-  const pixels = renderWebGLFrame(envCode, propType, propState);
-  renderPixelsToAscii(pixels, COLS, ROWS, true, mCtx, CELL_W, CELL_H, false);
+  const entZ = referenceEntityZ(envCode, COLS, ROWS);
+  const pixels = renderWebGLFrame(envCode, propType, propState, entZ);
+  blitWebGLTo2D(pixels, bCtx, COLS, ROWS);
+  composite25DEntities(bCtx, COLS, ROWS, state.screen, state.time);
+  renderPixelsToAscii(
+    bCtx.getImageData(0, 0, COLS, ROWS).data,
+    COLS,
+    ROWS,
+    false,
+    mCtx,
+    CELL_W,
+    CELL_H,
+    false
+  );
 }
 
 function render2DToAscii(drawFn) {
@@ -274,9 +296,10 @@ function getActiveCanvasHotspots() {
     ];
   }
   if (state.screen === "wild" && !state.viewArtId) {
+    const fen = fenPlateFractions(COLS, ROWS);
     return [
-      { id: "fenwarden", label: "[SPEAK: FEN-WARDEN]", x: 0.24, y: 0.56, r: 0.13 },
-      { id: "phantom", label: "[CONFRONT: THE MIRE-LEVIATHAN]", x: 0.56, y: 0.48, r: 0.14 }
+      { id: "fenwarden", label: "[SPEAK: FEN-WARDEN]", x: fen.fenwarden.x, y: fen.fenwarden.y, r: 0.13 },
+      { id: "phantom", label: "[CONFRONT: THE MIRE-LEVIATHAN]", x: fen.mirevisage.x, y: fen.mirevisage.y, r: 0.14 }
     ];
   }
   if (state.screen === "dungeon") {
@@ -365,9 +388,13 @@ function drawCanvasOverlays() {
 // 3. Master Animation Loop
 // ============================================================================
 
+let shotStill = false;
+
 function loop() {
-  state.time += 0.022;
-  state.combatPulse = Math.max(0, state.combatPulse - 0.025);
+  if (!shotStill) {
+    state.time += 0.022;
+    state.combatPulse = Math.max(0, state.combatPulse - 0.025);
+  }
 
   if (state.screen === "title") {
     render2DToAscii(drawCoverArt);
@@ -679,7 +706,7 @@ function openQuicksilverFen() {
   setDialogue(
     `3D Biome // ${TIME_PHASES[state.timeIdx]}`,
     "The Quicksilver Fen",
-    "Silver mist drifts across sunken ruins. <em>Speak with the Fen-Warden (left) or confront The Mire-Leviathan rising from the ripples (center).</em>",
+    "Silver mist drifts across sunken ruins. <em>Speak with the Fen-Warden (left) or confront The Mire-Leviathan rising from the ripples (right of the ruin pillar).</em>",
     [
       { label: "Speak with The Fen-Warden", action: "fen-warden" },
       { label: "Confront The Mire-Leviathan", action: "fen-fight" },
@@ -1374,22 +1401,16 @@ document.getElementById("btn-merch").addEventListener("click", () => {
   exp.width = COLS * CELL_W * sc;
   exp.height = ROWS * CELL_H * sc;
   const eCtx = exp.getContext("2d");
-  const is3D = !state.viewArtId && ["town", "dungeon", "wild", "camp", "encounter"].includes(state.screen);
-
-  if (is3D) {
-    renderPixelsToAscii(getLastWebGLPixels(), COLS, ROWS, true, eCtx, CELL_W * sc, CELL_H * sc, true);
-  } else {
-    renderPixelsToAscii(
-      bCtx.getImageData(0, 0, COLS, ROWS).data,
-      COLS,
-      ROWS,
-      false,
-      eCtx,
-      CELL_W * sc,
-      CELL_H * sc,
-      true
-    );
-  }
+  renderPixelsToAscii(
+    bCtx.getImageData(0, 0, COLS, ROWS).data,
+    COLS,
+    ROWS,
+    false,
+    eCtx,
+    CELL_W * sc,
+    CELL_H * sc,
+    true
+  );
 
   const a = document.createElement("a");
   a.href = exp.toDataURL("image/png");
@@ -1490,6 +1511,99 @@ if (hasSavedGame()) {
   }
 }
 
+function applyShotQuery() {
+  const params = new URLSearchParams(location.search);
+  const shot = params.get("shot");
+  if (!shot) return;
+  shotStill = true;
+
+  const cls = params.get("cls");
+  if (cls && CLASSES[cls]) state.clsKey = cls;
+  const god = params.get("god");
+  if (god && PANTHEON[god]) state.godKey = god;
+  const phase = params.get("phase");
+  if (phase != null && phase !== "") state.timeIdx = Math.max(0, Math.min(3, Number(phase) || 0));
+  state.pointerX = Number(params.get("px") ?? 0.5);
+  state.pointerY = Number(params.get("py") ?? 0.5);
+  state.time = Number(params.get("t") ?? 0.4);
+  state.viewArtId = null;
+  state.weaponTier = Number(params.get("wpn") ?? state.weaponTier);
+  document.documentElement.style.setProperty("--accent", PANTHEON[state.godKey].hex);
+
+  if (params.get("orient") === "vert") {
+    state.verticalMode = true;
+    document.getElementById("main-frame").classList.add("vertical-mode");
+  }
+
+  showPanel("game");
+  document.getElementById("hud-time").classList.remove("hidden");
+  document.getElementById("btn-nav-map").classList.remove("hidden");
+  document.getElementById("btn-nav-camp").classList.remove("hidden");
+
+  if (shot === "camp") {
+    openCampScene();
+  } else if (shot === "fen") {
+    openQuicksilverFen();
+  } else if (shot === "town") {
+    openTownMiregate();
+  } else if (shot === "enc0" || shot === "enc1" || shot === "enc2" || shot === "enc0hit") {
+    const key = shot === "enc1" ? "mirevisage" : shot === "enc2" ? "marionette" : "exile";
+    startEncounter(key, false);
+    if (shot === "enc0hit") {
+      state.combatPulse = 0.85;
+      setHitFlashHold(0.85);
+    } else {
+      state.combatPulse = 0;
+      setHitFlashHold(null);
+    }
+  } else if (shot === "dung" || shot === "dungboss" || shot === "dungfrog") {
+    const type = shot === "dungboss" ? "boss" : shot === "dungfrog" ? "wandering" : "combat";
+    const tier = params.get("tier") === "2" ? 2 : 1;
+    const room = {
+      id: 1,
+      gx: 2,
+      gy: 1,
+      type,
+      label: type,
+      isSecret: false,
+      connections: [0],
+      visited: true,
+      revealed: true,
+      cleared: false
+    };
+    state.dungeon = {
+      id: "shot",
+      baseName: "Shot",
+      depth: tier,
+      tier,
+      rooms: [
+        {
+          id: 0,
+          gx: 2,
+          gy: 2,
+          type: "entrance",
+          label: "Stairs",
+          isSecret: false,
+          connections: [1],
+          visited: true,
+          revealed: true,
+          cleared: true
+        },
+        room
+      ],
+      currentRoomId: 1
+    };
+    state.screen = "dungeon";
+    state.currentMapId = "ossuary";
+    updateNavButtons();
+    renderDungeonRoom();
+  }
+
+  updateHUD();
+  updateTimeHUD();
+}
+
+applyShotQuery();
 configureDimensions();
 
 window.addEventListener("keydown", (event) => {

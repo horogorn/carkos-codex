@@ -1,17 +1,24 @@
 // ============================================================================
 // THE CARKOS CODEX — WebGL 3D Raymarching Engine & SDF Prefabs
 // Imports ONLY from ./lore.js and ./state.js.
+// Environments only. Vessels, NPCs, and monsters are 2.5D plates.
 // Environments (u_env):
 //   0 = Miregate Town      1 = Modular Dungeon Room   2 = Whispering Well
 //   3 = Quicksilver Fen    4 = Surface Camp           5 = Dungeon Camp
 //   6 = Cinematic 3D Combat Arena
+// Alpha is front transmittance up to u_entZ (straight alpha; the context
+// is created with premultipliedAlpha: false so RGB stays unscaled).
 // ============================================================================
 
-import { CLASSES, PANTHEON } from "./lore.js";
+import { PANTHEON } from "./lore.js";
 import { state } from "./state.js";
 
 const glCanvas = document.createElement("canvas");
-const gl = glCanvas.getContext("webgl", { preserveDrawingBuffer: true });
+const gl = glCanvas.getContext("webgl", {
+  preserveDrawingBuffer: true,
+  premultipliedAlpha: false,
+  alpha: true
+});
 
 let currentCols = 132;
 let currentRows = 80;
@@ -37,10 +44,10 @@ const fragSrc = `
   uniform vec2 u_mouse;
   uniform float u_env;       // 0=Town, 1=Dungeon Room, 2=Dungeon Well, 3=Fen, 4=Surface Camp, 5=Dungeon Camp, 6=Cinematic Combat
   uniform vec3 u_godCol;
-  uniform float u_propType;  // In Combat: 0=Bone Colossus, 1=Mire Leviathan, 2=Pit-Beast
+  uniform float u_propType;  // In Combat: 0=stone arena, 1=leviathan water, 2=pit floor. Bodies are 2D plates.
   uniform float u_propState; // In Combat: combatPulse; In Camp: totem level; In Dungeon: opened/cleared flag
   uniform float u_timePhase;
-  uniform float u_gearId;
+  uniform float u_entZ;      // Plate depth. Alpha = front transmittance up to this z.
 
   mat2 rot(float a) {
     float s = sin(a), c = cos(a);
@@ -131,113 +138,8 @@ const fragSrc = `
     return steps + er * 0.45;
   }
 
-  // --- PROTAGONIST SILHOUETTE (SEATED IN CAMP OR STANDING IN COMBAT) ---
-  float sdPilgrim(vec3 p, float gearId, float standing) {
-    float hScale = standing > 0.5 ? 1.35 : 1.0;
-    float body = sdCapsule(p, vec3(0.0, -0.45 * hScale, 0.05), vec3(0.06, 0.30 * hScale, -0.05), 0.33);
-    float cowl = length(p - vec3(0.08, 0.36 * hScale, -0.08)) - 0.22;
-    float base = smin(body, cowl, 0.12);
-
-    vec3 hP = p - vec3(0.10, 0.56 * hScale, -0.10);
-    float head = length(hP) - 0.18;
-
-    if (gearId < 0.5) {
-      head = min(head, min(
-        sdCapsule(hP, vec3(-0.11, 0.12, 0.0), vec3(-0.22, 0.35, 0.0), 0.035),
-        sdCapsule(hP, vec3( 0.11, 0.12, 0.0), vec3( 0.22, 0.35, 0.0), 0.035)
-      ));
-    } else if (gearId < 1.5) {
-      float brim = length((hP - vec3(0.0, 0.11, 0.0)) * vec3(1.0, 4.0, 1.0)) - 0.32;
-      float beak = sdCapsule(hP, vec3(0.10, -0.02, -0.04), vec3(0.44, -0.12, 0.12), 0.05);
-      head = min(head, min(brim, beak));
-    } else if (gearId < 2.5) {
-      head = smin(head, sdCapsule(hP, vec3(0.0, 0.0, 0.0), vec3(-0.06, 0.40, 0.04), 0.13), 0.08);
-    } else if (gearId < 3.5) {
-      head = min(head, sdCapsule(p, vec3(0.30, -0.5 * hScale, -0.15), vec3(0.24, 0.85 * hScale, -0.12), 0.03));
-    } else if (gearId < 4.5) {
-      head = min(head, sdOctahedron((hP - vec3(0.0, 0.22, 0.0)) * vec3(1.5, 0.65, 1.5), 0.26));
-    } else {
-      float antL = sdCapsule(hP, vec3(-0.08, 0.14, 0.0), vec3(-0.26, 0.45, 0.04), 0.03);
-      float antR = sdCapsule(hP, vec3( 0.08, 0.14, 0.0), vec3( 0.26, 0.45, -0.04), 0.03);
-      head = min(head, min(antL, antR));
-    }
-    return smin(base, head, 0.08);
-  }
-
-  // --- COLOSSAL 3D MONSTERS FOR COMBAT CONFRONTATIONS ---
-  // Returns vec2(monsterDist, glowingEyesDist)
-  vec2 sdColossalMonster(vec3 p, float mType, float er) {
-    if (mType < 0.5) {
-      // 0: THE BONE-SWORN COLOSSUS (Towering Horned Giant + Monolith Cleaver)
-      float torso = sdCapsule(p, vec3(0.0, -1.5, 0.0), vec3(-0.15, 0.75, -0.25), 0.72 - (p.y + 1.5) * 0.12);
-      float shL = length(p - vec3(-0.85, 0.55, -0.15)) - 0.48;
-      float shR = length(p - vec3( 0.78, 0.62, -0.10)) - 0.52;
-      vec3 hP = p - vec3(-0.22, 1.15, -0.45);
-      float helm = sdOctahedron(hP * vec3(1.1, 0.85, 1.1), 0.55);
-      float hornL = sdCapsule(hP, vec3(-0.25, 0.2, 0.0), vec3(-0.75, 0.85, -0.2), 0.07);
-      float hornR = sdCapsule(hP, vec3( 0.25, 0.2, 0.0), vec3( 0.75, 0.85, -0.2), 0.07);
-      float blade = sdBox(p - vec3(-1.15, -0.35, -0.65), vec3(0.14, 1.35, 0.06));
-      float body = smin(min(torso, min(shL, shR)), min(helm, min(hornL, hornR)), 0.18);
-      body = min(body, blade) + er * 0.85;
-
-      float eyes = min(
-        length(hP - vec3(-0.14, 0.02, -0.38)) - 0.07,
-        length(hP - vec3( 0.12, 0.02, -0.38)) - 0.07
-      );
-      return vec2(body, eyes);
-
-    } else if (mType < 1.5) {
-      // 1: THE MIRE-LEVIATHAN (Gaunt Serpentine Apparition with Detached Jaw)
-      float neck = sdCapsule(p, vec3(0.0, -1.6, 0.2), vec3(-0.25, 1.05, -0.35), 0.44);
-      vec3 rp = p;
-      rp.y = mod(rp.y + 0.2, 0.4) - 0.2;
-      float ribs = sdCapsule(rp - vec3(0.0, 0.0, 0.15), vec3(-0.65, 0.0, 0.0), vec3(0.65, 0.0, 0.0), 0.08);
-      vec3 hP = p - vec3(-0.30, 1.28, -0.50);
-      float skull = length(hP * vec3(1.15, 0.85, 1.0)) - 0.48;
-      float jaw = sdBox(hP - vec3(0.0, -0.52 + sin(u_time * 3.0) * 0.06, -0.12), vec3(0.24, 0.14, 0.28));
-      float body = smin(neck, min(ribs, min(skull, jaw)), 0.15) + er * 0.95;
-
-      float eyes = min(
-        length(hP - vec3(-0.18, 0.06, -0.42)) - 0.08,
-        length(hP - vec3( 0.14, 0.06, -0.42)) - 0.08
-      );
-      return vec2(body, eyes);
-
-    } else {
-      // 2: THE PIT-BEAST (Towering Quadruped with Crown of Dorsal Spines)
-      float hump = length((p - vec3(0.15, 0.35, 0.25)) * vec3(0.85, 0.95, 0.72)) - 0.95;
-      float legFL = sdCapsule(p, vec3(-0.65, 0.25, -0.45), vec3(-0.85, -1.65, -0.65), 0.22);
-      float legFR = sdCapsule(p, vec3( 0.75, 0.25, -0.35), vec3( 0.95, -1.65, -0.55), 0.22);
-      float legBL = sdCapsule(p, vec3(-0.55, 0.35,  0.65), vec3(-0.70, -1.65,  0.85), 0.24);
-      float legBR = sdCapsule(p, vec3( 0.65, 0.35,  0.75), vec3( 0.85, -1.65,  0.95), 0.24);
-      vec3 hP = p - vec3(-0.25, 0.42, -0.75);
-      float snout = sdOctahedron(hP * vec3(1.0, 1.1, 0.85), 0.56);
-      float crownSpikes = min(
-        min(
-          sdCapsule(hP, vec3(-0.2, 0.2, 0.1), vec3(-0.55, 0.75, 0.25), 0.06),
-          sdCapsule(hP, vec3( 0.2, 0.2, 0.1), vec3( 0.55, 0.75, 0.25), 0.06)
-        ),
-        sdCapsule(hP, vec3(0.0, 0.25, 0.15), vec3(0.0, 0.88, 0.35), 0.07)
-      );
-      float body = smin(hump, min(min(legFL, legFR), min(legBL, legBR)), 0.22);
-      body = smin(body, min(snout, crownSpikes), 0.16) + er * 0.95;
-
-      float eyes = min(
-        length(hP - vec3(-0.20, 0.08, -0.42)) - 0.095,
-        length(hP - vec3( 0.16, 0.08, -0.42)) - 0.095
-      );
-      return vec2(body, eyes);
-    }
-  }
-
-  float sdFigure(vec3 p, float tall) {
-    float cloak = sdCapsule(p, vec3(0.0, -1.5, 0.0), vec3(0.0, tall * 0.3, 0.0), 0.42 - (p.y + 1.5) * 0.11);
-    float sh = length(p - vec3(0.0, tall * 0.25, 0.0)) - 0.36;
-    float hd = sdOctahedron(p - vec3(0.0, tall * 0.58, 0.0), 0.28);
-    return smin(min(cloak, sh), hd, 0.12);
-  }
-
-  // Material IDs: 1=stone/flesh, 2=glowing relic/monster eyes, 3=warm torch/fire, 4=water, 5=hero silhouette
+  // Material IDs: 1=stone, 2=glowing relic, 3=warm torch/fire, 4=water.
+  // Living figures are not in the distance field.
   vec2 map(vec3 p) {
     float er = fbmErosion(p) * 0.048;
 
@@ -312,8 +214,6 @@ const fragSrc = `
       } else if (u_propType < 6.5) {
         propStone = sdStairwell(p - vec3(0.0, 0.0, 0.4), 1.0, er);
         propGlow = sdOctahedron(p - vec3(0.0, -1.2, 0.9), 0.25);
-      } else {
-        if (u_propState < 0.5) propStone = sdFigure(p - vec3(0.0, -0.15, -0.4), 1.45) + er * 0.35;
       }
 
       float stone = min(floorD, min(backWall, min(smin(pillar, arch, 0.25), propStone)));
@@ -342,13 +242,8 @@ const fragSrc = `
       mp.x = mod(mp.x + 2.4, 4.8) - 2.4;
       mp.z = mod(mp.z + 2.6, 5.2) - 2.6;
       float ruin = sdBox(mp - vec3(0.0, -0.5, 0.0), vec3(0.32, 1.4, 0.32)) + er * 0.9;
-      float warden = sdFigure(p - vec3(-1.45, -0.15, -0.9), 1.25) + er * 0.3;
-      float stone = min(ruin, warden);
-      vec3 phP = p - vec3(0.4, 0.1 + sin(u_time * 1.8) * 0.2, 0.0);
-      float phantom = sdCapsule(phP, vec3(0.0, -0.8, 0.0), vec3(0.0, 0.7, 0.0), 0.34 + sin(phP.y * 6.0 + u_time * 4.0) * 0.08) + er * 0.6;
-      vec2 res = vec2(stone, 1.0);
+      vec2 res = vec2(ruin, 1.0);
       if (water < res.x) res = vec2(water, 4.0);
-      if (phantom < res.x) res = vec2(phantom, 2.0);
       return res;
     }
     // --- ENV 4 & 5: SURFACE & DUNGEON CAMPS ---
@@ -375,14 +270,12 @@ const fragSrc = `
 
       vec3 fP = p - vec3(0.15, -1.55, -0.85);
       float hearthRing = max(abs(length(fP.xz) - 0.48) - 0.11, abs(fP.y) - 0.11) + er * 0.8;
-      float pilgrim = sdPilgrim(p - vec3(-0.85, -1.12, -0.95), u_gearId, 0.0);
 
       float stone = min(ground, min(shell, min(totem, min(anvil, hearthRing))));
       float fH = 0.35 + u_propType * 0.12 + sin(u_time * 12.0) * 0.06;
       float flame = length((fP - vec3(0.0, fH, 0.0)) * vec3(1.5, 0.65, 1.5)) - 0.24 + gyroid(fP * 9.0 + u_time * 4.5) * 0.04;
 
       vec2 res = vec2(stone, 1.0);
-      if (pilgrim < res.x) res = vec2(pilgrim, 5.0);
       if (totOrb < res.x) res = vec2(totOrb, 2.0);
       if (flame < res.x) res = vec2(flame, 3.0);
       return res;
@@ -397,18 +290,7 @@ const fragSrc = `
       q.z = mod(q.z + 2.2, 4.4) - 2.2;
       float pillars = length(q.xz) - 0.42 + er;
 
-      vec3 heroPos = p - vec3(-0.92, -1.04, -1.65);
-      float hero = sdPilgrim(heroPos, u_gearId, 1.0);
-      float heroTorch = length(p - vec3(-0.62, -0.78 + sin(u_time * 14.0) * 0.02, -1.55)) - 0.09;
-
-      vec3 monPos = p - vec3(0.58, -0.05 + sin(u_time * 1.4) * 0.07, 1.15);
-      vec2 mon = sdColossalMonster(monPos, u_propType, er);
-
       vec2 res = vec2(min(ground, pillars), groundMat);
-      if (mon.x < res.x) res = vec2(mon.x, 1.0);
-      if (hero < res.x) res = vec2(hero, 5.0);
-      if (heroTorch < res.x) res = vec2(heroTorch, 3.0);
-      if (mon.y < res.x) res = vec2(mon.y, 2.0);
       return res;
     }
   }
@@ -471,6 +353,8 @@ const fragSrc = `
       col += mix(vec3(0.22, 0.16, 0.15), u_godCol, 0.4) * mHalo * (0.22 + u_propState * 0.55);
     }
 
+    float fogDensity = (u_env > 5.5) ? 0.026 : 0.018;
+
     if (mat > 0.5) {
       vec3 p = ro + rd * t;
       vec3 n = calcNormal(p);
@@ -483,7 +367,11 @@ const fragSrc = `
       vec3 lDir = lTarget - p;
       float lDist = length(lDir);
       float diff = max(dot(n, lDir / lDist), 0.0);
-      float atten = (2.4 * flick + (u_env > 5.5 ? u_propState * 3.0 : 0.0)) / (1.0 + lDist * lDist * 0.24);
+      // The strike pulse used to light a floor that the hero and monster SDFs
+      // covered. Those bodies are plates now, so the same *3 boost clips the
+      // open floor into █. *1.1 still kicks the arena without crossing the
+      // 0.97 hotspot gate.
+      float atten = (2.4 * flick + (u_env > 5.5 ? u_propState * 1.1 : 0.0)) / (1.0 + lDist * lDist * 0.24);
 
       vec3 envLight = vec3(0.0);
       if (u_env > 5.5) {
@@ -502,25 +390,29 @@ const fragSrc = `
 
       float rim = pow(1.0 - max(dot(n, -rd), 0.0), 2.8);
 
-      if (mat > 4.5) {
-        col = vec3(0.10, 0.09, 0.08) * ao + vec3(1.0, 0.76, 0.42) * rim * 1.25;
-      } else {
-        vec3 baseTone = vec3(0.78, 0.74, 0.67);
-        if (mat > 3.5) baseTone = vec3(0.68, 0.85, 0.92);
-        else if (mat > 2.5) baseTone = vec3(1.0, 0.86, 0.45);
-        else if (mat > 1.5) baseTone = (u_env > 5.5) ? vec3(1.0, 0.28, 0.24) : u_godCol * 1.25;
+      vec3 baseTone = vec3(0.78, 0.74, 0.67);
+      if (mat > 3.5) baseTone = vec3(0.68, 0.85, 0.92);
+      else if (mat > 2.5) baseTone = vec3(1.0, 0.86, 0.45);
+      else if (mat > 1.5) baseTone = u_godCol * 1.25;
 
-        col = baseTone * (diff * atten + 0.08) * ao + envLight * ao + u_godCol * rim * (mat > 1.5 ? 1.1 : 0.36) * ao;
-        if ((mat > 2.5 && mat < 3.5) || (u_env > 5.5 && mat > 1.5 && mat < 2.5)) {
-          col += baseTone * 0.75;
-        }
+      col = baseTone * (diff * atten + 0.08) * ao + envLight * ao + u_godCol * rim * (mat > 1.5 ? 1.1 : 0.36) * ao;
+      if (mat > 2.5 && mat < 3.5) col += baseTone * 0.75;
+
+      // Stone only. Fire and relics may still clear the 0.97 hotspot gate.
+      // The open arena floor, no longer covered by a body SDF, was crossing it
+      // on a strike and drawing a band of █.
+      if (mat < 1.5) {
+        float stoneLum = dot(col, vec3(0.299, 0.587, 0.114));
+        if (stoneLum > 0.96) col *= 0.96 / stoneLum;
       }
 
-      float fogDensity = (u_env > 5.5) ? 0.026 : 0.018;
       col = mix(vec3(0.012), col, exp(-fogDensity * t * t));
     }
 
-    gl_FragColor = vec4(pow(clamp(col, 0.0, 1.0), vec3(0.84)), 1.0);
+    float tFront = (u_entZ - ro.z) / max(rd.z, 0.05);
+    tFront = clamp(tFront, 0.0, 18.0);
+    float frontT = exp(-fogDensity * tFront * tFront);
+    gl_FragColor = vec4(pow(clamp(col, 0.0, 1.0), vec3(0.84)), frontT);
   }
 `;
 
@@ -579,7 +471,7 @@ function initWebGL() {
     propType: gl.getUniformLocation(prog, "u_propType"),
     propState: gl.getUniformLocation(prog, "u_propState"),
     timePhase: gl.getUniformLocation(prog, "u_timePhase"),
-    gearId: gl.getUniformLocation(prog, "u_gearId")
+    entZ: gl.getUniformLocation(prog, "u_entZ")
   };
 
   programReady = true;
@@ -597,7 +489,7 @@ export function resizeWebGL(cols, rows) {
   glPixels = new Uint8Array(cols * rows * 4);
 }
 
-export function renderWebGLFrame(envCode, propType, propState) {
+export function renderWebGLFrame(envCode, propType, propState, entZ = 0) {
   if (!programReady || !gl || !U) return glPixels;
 
   gl.uniform2f(U.res, currentCols, currentRows);
@@ -608,10 +500,21 @@ export function renderWebGLFrame(envCode, propType, propState) {
   gl.uniform1f(U.propType, propType);
   gl.uniform1f(U.propState, propState);
   gl.uniform1f(U.timePhase, state.timeIdx);
-  gl.uniform1f(U.gearId, CLASSES[state.clsKey].gearId);
+  gl.uniform1f(U.entZ, entZ);
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   gl.readPixels(0, 0, currentCols, currentRows, gl.RGBA, gl.UNSIGNED_BYTE, glPixels);
+  const attrs = gl.getContextAttributes();
+  if (attrs && attrs.premultipliedAlpha) {
+    for (let i = 0; i < glPixels.length; i += 4) {
+      const a = glPixels[i + 3];
+      if (a === 0 || a === 255) continue;
+      const s = 255 / a;
+      glPixels[i] = Math.min(255, glPixels[i] * s);
+      glPixels[i + 1] = Math.min(255, glPixels[i + 1] * s);
+      glPixels[i + 2] = Math.min(255, glPixels[i + 2] * s);
+    }
+  }
   return glPixels;
 }
 
