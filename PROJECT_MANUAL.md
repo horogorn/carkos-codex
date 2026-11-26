@@ -30,8 +30,9 @@ THE CARKOS CODEX is a browser-only ES module game using:
 - `src/shaders.js` for WebGL raymarching and 3D scene rendering.
 - `src/dungeon.js` for procedural dungeon generation, the visited-floor cache, and room actions.
 - `src/combat.js` for turn-based encounter logic and physical dice animation.
-- `src/art2d.js` for public 2D drawing APIs and retained portraits/maps/covers.
-- `src/assets/*.js` for extracted NPC, monster, item, and vessel drawings.
+- `src/art2d.js` for public 2D drawing APIs, the shared `vesselPalette(godKey)`, and retained portraits/maps/covers.
+- `src/compositor25d.js` for the 2.5D plate pass that sits between the environment framebuffer and the ASCII rasterizer.
+- `src/assets/*.js` for extracted NPC, monster, item, and vessel drawings. No compositor edits land in these files.
 - `src/typography.js` for the bundled Cousine canvas stack and the ASCII shade-ramp presets.
 - `fonts/` for the self-hosted Cousine faces and `fonts/OFL.txt`.
 
@@ -140,7 +141,9 @@ The application owner. It:
 - Configures combat and dungeon callback hooks.
 - Checks for and restores saved games.
 
-The ASCII pipeline uses `COLS`, `ROWS`, `CELL_W`, `CELL_H`, and the ramp presets in `src/typography.js`. The display canvas is separate from the low-resolution buffer and WebGL readback canvas. The first frame waits on `document.fonts.ready` and an explicit bold Cousine load, raced against a 2 second cap, before `renderPixelsToAscii` runs.
+The ASCII pipeline uses `COLS`, `ROWS`, `CELL_W`, `CELL_H`, and the ramp presets in `src/typography.js`. The compositor imports `HOTSPOT_LUM` from that module and does not redefine the ramp, Sobel threshold, Bayer matrix, or cell size. The display canvas is separate from the low-resolution buffer and WebGL readback canvas. The first frame waits on `document.fonts.ready` and an explicit bold Cousine load, raced against a 2 second cap, before `renderPixelsToAscii` runs.
+
+`?shot=` is a still-frame hook for acceptance captures. It freezes `state.time` and `state.combatPulse`, then opens camp, fen, town, an encounter (`enc0` exile, `enc1` leviathan, `enc2` pit-beast, `enc0hit` with the hit flash held), or a one-room dungeon (`dung`, `dungboss`, `dungfrog`). `cls`, `god`, `phase` (`0` dawn through `3` witching hour), `orient=vert`, `tier=2`, and `t` select the still. It does not write the save.
 
 Shade ramps, darkest to lightest. Coverage is mean alpha of Cousine Bold at 8px inside a 6×8 cell:
 
@@ -157,7 +160,7 @@ Leaf module. Exports `FONT_STACK`, `canvasFont`, the four ramp presets (`legacy`
 
 ### `src/shaders.js`
 
-Contains the WebGL vertex/fragment shaders and signed-distance-function prefabs.
+Contains the WebGL vertex/fragment shaders and environment signed-distance-function prefabs. Vessels, NPCs, and monsters are not in the distance field. `CLASSES` is not imported. `CLASSES[].gearId` remains in the lore catalog and is unused by the shader.
 
 Uniforms include:
 
@@ -166,10 +169,12 @@ Uniforms include:
 - mouse/pointer
 - environment code
 - Pantheon color
-- prop type
+- prop type (combat: arena floor — `1` is leviathan water; the body is a 2D plate)
 - prop state
 - time phase
-- gear ID
+- `u_entZ`, the plate depth plane
+
+The context is created with `premultipliedAlpha: false` so the alpha channel can carry data without scaling RGB. If a driver still premultiplies, `renderWebGLFrame` divides RGB by alpha before returning. Alpha is the front transmittance `exp(-fogDensity * tFront * tFront)` up to `u_entZ`. `fogDensity` stays `0.026` in the combat arena and `0.018` elsewhere. RGB fog, gamma `pow(..., vec3(0.84))`, and relic (material 2) shading are unchanged. Material 5 (the old hero silhouette) is gone. The combat torch light at world `(-0.62, -0.78, -1.55)` still lights the arena. The flame itself is a 2D sprite. The strike pulse used to add `propState * 3` to the arena light while the hero and monster SDFs covered the near floor. Those bodies are plates now, so that boost clipped the open floor to `█`. The coefficient is `1.1`, and stone (`mat < 1.5`) is capped at luminance `0.96` before fog so a strike cannot paint a band of `█`. Fire and relics are not capped.
 
 Environment codes:
 
@@ -192,6 +197,7 @@ Public 2D API. These exports must remain stable unless every caller is intention
 - `drawExpressivePortrait(ctx, w, h, t)`
 - `drawCoverArt(ctx, w, h, t)`
 - `drawFullBodyVessel(ctx, w, h, t)`
+- `vesselPalette(godKey)` — the only cloth/parchment/god-glow palette. `drawFullBodyVessel` and the compositor both use it.
 
 `drawDetailedArtwork` delegates in this order:
 
@@ -228,6 +234,7 @@ index.html
        -> src/state.js -> src/lore.js
        -> src/typography.js
        -> src/shaders.js -> src/lore.js, src/state.js
+       -> src/compositor25d.js -> src/state.js, src/art2d.js, src/typography.js, src/assets/{vessels,npcs,monsters}.js
        -> src/art2d.js -> src/lore.js, src/state.js, src/typography.js, src/assets/*.js
        -> src/dungeon.js -> src/state.js, src/typography.js
        -> src/combat.js -> src/lore.js, src/state.js, src/typography.js
@@ -250,16 +257,16 @@ The intended extraction is:
 - lore/static data: `lore.js`
 - mutable gameplay state: `state.js`
 - renderer orchestration: `main.js`
-- sub-systems: `shaders.js`, `dungeon.js`, `combat.js`
+- sub-systems: `shaders.js`, `compositor25d.js`, `dungeon.js`, `combat.js`
 - artwork: `art2d.js` and `assets/*.js`
 
 ## 5. Rendering Pipeline
 
-Every animation frame increments `state.time` and decays `state.combatPulse`, then:
+Every animation frame increments `state.time` and decays `state.combatPulse` (`?shot=` freezes both), then:
 
 1. Route from `state.screen` and `state.viewArtId`.
 2. For 2D scenes, draw to the low-resolution 2D buffer and rasterize to ASCII.
-3. For 3D scenes, render WebGL into low-resolution RGBA pixels and rasterize to ASCII.
+3. For 3D scenes, render the WebGL environment, blit it, composite 2.5D plates, then rasterize to ASCII.
 4. Render the expressive mini portrait independently.
 5. Draw hotspots, map labels, minimap, floating text, and physical dice as 2D overlays.
 6. Schedule the next frame with `requestAnimationFrame`.
@@ -274,13 +281,15 @@ For 2D:
 - map -> `drawWorldMap`
 - inspected vessel -> `drawFullBodyVessel`
 
-For 3D:
+For 3D, `renderWebGL3D` reads an environment frame, blits it right-side up into the low-resolution buffer (alpha forced opaque; transmittance kept aside), runs `composite25DEntities`, then rasterizes that buffer with `flipY` false:
 
-- town -> environment `0`
-- dungeon -> environment `1` or `2`
-- wild/fen -> environment `3`
-- camp -> environment `4` or `5`
-- encounter -> environment `6`
+- town -> environment `0` (no plate)
+- dungeon -> environment `1` or `2`. Uncleared wandering rooms stamp the Frog-Knight. Uncleared combat or boss rooms stamp `marionette` when `dungeon.tier === 2`, otherwise `exile`.
+- wild/fen -> environment `3`. Landscape: Fen-Warden on the left, Mire-Leviathan as far right as the frame allows (`x ≥ 0.62`) so the ruin pillar is not covered. 9:16 stacks them (warden above, leviathan below) because both plates at scale `0.72` cannot sit side by side on 76 columns.
+- camp -> environment `4` or `5`, with the class vessel. The hearth flame stays in the shader.
+- encounter -> environment `6`. Monster and hero plates. The hero torch flame and up to 12 sparks are drawn after the plates.
+
+Plates are drawn on a transparent `COLS×ROWS` layer. Shadow, keyline, rim, fog, and hit flash affect plate pixels only (source-over / source-atop math). Nothing fills the plate's bounding rectangle. Placement and parallax snap to whole cells. Parallax amplitude is ±2.25 cells times depth. A glyph hold keeps a plate pixel's previous value when its luminance moves by less than `0.042`. Detail plates use scale `≥ 0.72` except the verified 9:16 encounter and camp layout (Colossus `0.52` at `0.64, 0.46`, hero `0.62` at `0.26, 0.66`, camp `0.58` at `0.34, 0.64`). Bust plates (`exile`, `fenwarden`, `frogknight`) fade across the bottom 10 plate-units and sit on a ground mist capped at alpha `0.35`. Fog alpha is `min(0.35, (1 − T) · 0.6)`, with `T` rescaled from the GL transmittance to the feet-row floor depth. In an encounter that alpha is also multiplied by `(1 + 0.5 · combatPulse)` before the cap. The hit flash is `rgba(184, 50, 45, 0.55 · flash)` for at most 6 frames, with luminance capped at `min(0.9, HOTSPOT_LUM)`. Etch PNG reads the same composited buffer for 2D and 3D, `flipY` false.
 
 Refactors that are not an approved art pass still require preserving every coordinate, gradient, color, branch, formula, and call sequence. Drawing time must remain passed through as `t` and use the original animation formulas.
 
@@ -441,7 +450,7 @@ Toolbar features:
 - 9:16/reel mode
 - 8-second WebM recording
 
-PNG export rasterizes at 3x the ASCII canvas resolution. 3D exports use WebGL readback pixels; 2D exports use the 2D buffer.
+PNG export rasterizes at 3x the ASCII canvas resolution from the low-resolution buffer, which already includes 2.5D plates on 3D screens. `flipY` is false.
 
 Recording captures `mainCanvas` at 60 FPS in VP9 when supported, otherwise standard WebM.
 
@@ -457,7 +466,7 @@ Add its catalog entry in `lore.js`, add its `artId` handling to `src/assets/item
 
 ### Adding a class
 
-Update `CLASSES`, `src/assets/vessels.js`, the flesh-forge DOM in `index.html`, the forge event wiring in `main.js`, and shader gear mapping if the 3D silhouette changes.
+Update `CLASSES`, `src/assets/vessels.js`, the flesh-forge DOM in `index.html`, and the forge event wiring in `main.js`. The in-world silhouette is the 2D class plate. `gearId` is not read by the shader.
 
 ### Adding a location
 
@@ -516,6 +525,12 @@ Before completing a change:
 Because the project has no build configuration in the current repository, syntax verification is the default minimum. Browser testing should be done through a local HTTP server.
 
 ## 16. Change Log
+
+### 2026-11-26 — 2.5D compositor
+
+- Environments stay in WebGL. `sdPilgrim`, `sdColossalMonster`, `sdFigure`, material 5, and `u_gearId` are gone. Architecture, water, lighting, fog, and props (chest, painting, stairs, campfire, anvil, totem) stay. `u_entZ` writes front transmittance into alpha.
+- `src/compositor25d.js` blits that frame and stamps woodcut plates: camp vessel, encounter monster and hero, Fen-Warden and Mire-Leviathan, dungeon Frog-Knight or the tier's monster. Integer parallax, contact shadow, 2px keyline, 1px rim, feet-row fog, bust feather, 6-frame hit flash, and the hero torch. Save key `carkos_codex_save_v9` and the floor cache are unchanged.
+- `vesselPalette(godKey)` in `src/art2d.js` is the only cloth palette. `style.css` and `src/assets/*` were not edited. Rasterizer constants stay in `src/typography.js`.
 
 ### 2026-11-26 — Merge art pass with v9.2 continuity
 
